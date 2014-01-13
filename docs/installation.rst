@@ -32,4 +32,4 @@ Building pyrocksdb
     $ cd pyrocks_test
     $ . bin/active
     $ pip install Cython
-    $ pip install .....
+    $ pip install git+git://github.com/stephan-hof/pyrocksdb.git
