@@ -13,7 +13,9 @@ For more details consider https://github.com/facebook/rocksdb/blob/master/INSTAL
     $ apt-get install libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
     $ git clone https://github.com/facebook/rocksdb.git
     $ cd rocksdb
-    $ make librocksdb.so librocksdb.so.2 librocksdb.so.2.0
+    $ # It is tested with this version
+    $ git checkout ac2fe728327be75c8c289d4e3ebf8587d88c518d
+    $ make librocksdb.so
 
 If you do not want to call ``make install`` export the following enviroment
 variables::
