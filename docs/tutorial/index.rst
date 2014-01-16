@@ -29,6 +29,29 @@ A more production ready open can look like this ::
 It assings a cache of 2.5G, uses a bloom filter for faster lookups and keeps
 more data (64 MB) in memory before writting a .sst file
 
+About bytes and unicode
+========================
+
+RocksDB stores all data as uninterpreted *byte strings*.
+pyrocksdb behaves the same and uses nearly everywhere byte strings too.
+In python2 this is the ``str`` type. In python3 the ``bytes`` type. 
+Since the default string type for string literals differs between python 2 and 3,
+it is strongly recommended to use an explicit ``b`` prefix for all byte string
+literals in both python2 and python3 code.
+For example ``b'this is a byte string'``. This avoids ambiguity and ensures
+that your code keeps working as intended if you switch between python2 and python3.
+
+The only place where you can pass unicode objects are filesytem paths like
+
+* Directory name of the database itself :py:meth:`rocksdb.DB.__init__`
+
+* :py:attr:`rocksdb.Options.wal_dir`
+
+* :py:attr:`rocksdb.Options.db_log_dir`
+
+To encode this unicode objects the `sys.getfilesystemencoding()` encoding is used
+
+
 Access
 ======
 
