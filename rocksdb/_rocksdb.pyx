@@ -4,9 +4,10 @@ from libcpp.deque cimport deque
 from libcpp.vector cimport vector
 from libcpp cimport bool as cpp_bool
 from cython.operator cimport dereference as deref
-from cpython.string cimport PyString_AsString
-from cpython.string cimport PyString_Size
-from cpython.string cimport PyString_FromString
+from cpython.bytes cimport PyBytes_AsString
+from cpython.bytes cimport PyBytes_Size
+from cpython.bytes cimport PyBytes_FromString
+from cpython.bytes cimport PyBytes_FromStringAndSize
 from cpython.unicode cimport PyUnicode_Decode
 
 from std_memory cimport shared_ptr
@@ -21,8 +22,6 @@ cimport snapshot
 cimport db
 cimport iterator
 
-from slice_ cimport slice_to_str
-from slice_ cimport str_to_slice
 from status cimport Status
 
 import sys
@@ -66,8 +65,17 @@ cdef check_status(const Status& st):
 ######################################################
 
 
-cdef string bytes_to_string(bytes path) except *:
+cdef string bytes_to_string(path) except *:
     return string(PyBytes_AsString(path), PyBytes_Size(path))
+
+cdef string_to_bytes(string ob):
+    return PyBytes_FromStringAndSize(ob.c_str(), ob.size())
+
+cdef slice_.Slice bytes_to_slice(ob) except *:
+    return slice_.Slice(PyBytes_AsString(ob), PyBytes_Size(ob))
+
+cdef slice_to_bytes(slice_.Slice sl):
+    return PyBytes_FromStringAndSize(sl.data(), sl.size())
 
 ## only for filsystem paths
 cdef string path_to_string(object path) except *:
@@ -80,7 +88,7 @@ cdef string path_to_string(object path) except *:
        raise TypeError("Wrong type for path: %s" % path)
 
 cdef object string_to_path(string path):
-    fs_encoding = sys.getfilesystemencoding()
+    fs_encoding = sys.getfilesystemencoding().encode('ascii')
     return PyUnicode_Decode(path.c_str(), path.size(), fs_encoding, "replace")
 
 ## Here comes the stuff for the comparator
@@ -105,7 +113,7 @@ cdef class PyGenericComparator(PyComparator):
         self.ob = ob
         self.comparator_ptr = <comparator.Comparator*>(
             new comparator.ComparatorWrapper(
-                ob.name(),
+                bytes_to_string(ob.name()),
                 <void*>ob,
                 compare_callback))
 
@@ -126,12 +134,12 @@ cdef class PyBytewiseComparator(PyComparator):
         self.comparator_ptr = comparator.BytewiseComparator()
 
     def name(self):
-        return PyString_FromString(self.comparator_ptr.Name())
+        return PyBytes_FromString(self.comparator_ptr.Name())
 
-    def compare(self, str a, str b):
+    def compare(self, a, b):
         return self.comparator_ptr.Compare(
-            str_to_slice(a),
-            str_to_slice(b))
+            bytes_to_slice(a),
+            bytes_to_slice(b))
 
     cdef object get_ob(self):
        return self
@@ -144,7 +152,7 @@ cdef int compare_callback(
     const slice_.Slice& a,
     const slice_.Slice& b) with gil:
 
-    return (<object>ctx).compare(slice_to_str(a), slice_to_str(b))
+    return (<object>ctx).compare(slice_to_bytes(a), slice_to_bytes(b))
 
 BytewiseComparator = PyBytewiseComparator
 #########################################
@@ -160,6 +168,7 @@ cdef class PyFilterPolicy(object):
     cdef const filter_policy.FilterPolicy* get_policy(self):
         return NULL
 
+
 @cython.internal
 cdef class PyGenericFilterPolicy(PyFilterPolicy):
     cdef filter_policy.FilterPolicy* policy
@@ -171,7 +180,7 @@ cdef class PyGenericFilterPolicy(PyFilterPolicy):
 
         self.ob = ob
         self.policy = <filter_policy.FilterPolicy*> new filter_policy.FilterPolicyWrapper(
-                ob.name(),
+                bytes_to_string(ob.name()),
                 <void*>ob,
                 <void*>ob,
                 create_filter_callback,
@@ -192,16 +201,18 @@ cdef void create_filter_callback(
     int n,
     string* dst) with gil:
 
-    cdef string ret = (<object>ctx).create_filter(
-        [slice_to_str(keys[i]) for i in range(n)])
-    dst.append(ret)
+    ret = (<object>ctx).create_filter(
+        [slice_to_bytes(keys[i]) for i in range(n)])
+    dst.append(bytes_to_string(ret))
 
 cdef cpp_bool key_may_match_callback(
     void* ctx,
     const slice_.Slice& key,
     const slice_.Slice& filt) with gil:
 
-    return (<object>ctx).key_may_match(slice_to_str(key), slice_to_str(filt))
+    return (<object>ctx).key_may_match(
+        slice_to_bytes(key),
+        slice_to_bytes(filt))
 
 @cython.internal
 cdef class PyBloomFilterPolicy(PyFilterPolicy):
@@ -214,26 +225,26 @@ cdef class PyBloomFilterPolicy(PyFilterPolicy):
         del self.policy
 
     def name(self):
-        return PyString_FromString(self.policy.Name())
+        return PyBytes_FromString(self.policy.Name())
 
     def create_filter(self, keys):
         cdef string dst
         cdef vector[slice_.Slice] c_keys
 
         for key in keys:
-            c_keys.push_back(str_to_slice(key))
+            c_keys.push_back(bytes_to_slice(key))
 
         self.policy.CreateFilter(
             vector_data(c_keys),
             c_keys.size(),
             cython.address(dst))
 
-        return dst
+        return string_to_bytes(dst)
 
     def key_may_match(self, key, filter_):
         return self.policy.KeyMayMatch(
-            str_to_slice(key),
-            str_to_slice(filter_))
+            bytes_to_slice(key),
+            bytes_to_slice(filter_))
 
     cdef object get_ob(self):
         return self
@@ -258,7 +269,7 @@ cdef class PyMergeOperator(object):
             self.merge_op.reset(
                 <merge_operator.MergeOperator*>
                     new merge_operator.AssociativeMergeOperatorWrapper(
-                        ob.name(),
+                        bytes_to_string(ob.name()),
                         <void*>(ob),
                         merge_callback))
 
@@ -267,7 +278,7 @@ cdef class PyMergeOperator(object):
             self.merge_op.reset(
                 <merge_operator.MergeOperator*>
                     new merge_operator.MergeOperatorWrapper(
-                        ob.name(),
+                        bytes_to_string(ob.name()),
                         <void*>ob,
                         <void*>ob,
                         full_merge_callback,
@@ -292,18 +303,16 @@ cdef cpp_bool merge_callback(
     if existing_value == NULL:
         py_existing_value = None
     else:
-        py_existing_value = slice_to_str(deref(existing_value))
+        py_existing_value = slice_to_bytes(deref(existing_value))
 
     try:
         ret = (<object>ctx).merge(
-            slice_to_str(key),
+            slice_to_bytes(key),
             py_existing_value,
-            slice_to_str(value))
+            slice_to_bytes(value))
 
         if ret[0]:
-            new_value.assign(
-                PyString_AsString(ret[1]),
-                PyString_Size(ret[1]))
+            new_value.assign(bytes_to_string(ret[1]))
             return True
         return False
 
@@ -319,25 +328,23 @@ cdef cpp_bool full_merge_callback(
     void* ctx,
     const slice_.Slice& key,
     const slice_.Slice* existing_value,
-    const deque[string]& operand_list,
+    const deque[string]& op_list,
     string* new_value,
     logger.Logger* log) with gil:
 
     if existing_value == NULL:
         py_existing_value = None
     else:
-        py_existing_value = slice_to_str(deref(existing_value))
+        py_existing_value = slice_to_bytes(deref(existing_value))
 
     try:
         ret = (<object>ctx).full_merge(
-            slice_to_str(key),
+            slice_to_bytes(key),
             py_existing_value,
-            [operand_list[i] for i in range(operand_list.size())])
+            [string_to_bytes(op_list[i]) for i in range(op_list.size())])
 
         if ret[0]:
-            new_value.assign(
-                PyString_AsString(ret[1]),
-                PyString_Size(ret[1]))
+            new_value.assign(bytes_to_string(ret[1]))
             return True
         return False
 
@@ -359,14 +366,12 @@ cdef cpp_bool partial_merge_callback(
 
     try:
         ret = (<object>ctx).partial_merge(
-            slice_to_str(key),
-            slice_to_str(left_op),
-            slice_to_str(right_op))
+            slice_to_bytes(key),
+            slice_to_bytes(left_op),
+            slice_to_bytes(right_op))
 
         if ret[0]:
-            new_value.assign(
-                PyString_AsString(ret[1]),
-                PyString_Size(ret[1]))
+            new_value.assign(bytes_to_string(ret[1]))
             return True
         return False
 
@@ -416,10 +421,10 @@ LRUCache = PyLRUCache
 
 
 cdef class CompressionType(object):
-    no_compression = 'no_compression'
-    snappy_compression = 'snappy_compression'
-    zlib_compression = 'zlib_compression'
-    bzip2_compression = 'bzip2_compression'
+    no_compression = u'no_compression'
+    snappy_compression = u'snappy_compression'
+    zlib_compression = u'zlib_compression'
+    bzip2_compression = u'bzip2_compression'
 
 cdef class Options(object):
     cdef options.Options* opts
@@ -939,13 +944,13 @@ cdef class WriteBatch(object):
         del self.batch
 
     def put(self, key, value):
-        self.batch.Put(str_to_slice(key), str_to_slice(value))
+        self.batch.Put(bytes_to_slice(key), bytes_to_slice(value))
 
     def merge(self, key, value):
-        self.batch.Merge(str_to_slice(key), str_to_slice(value))
+        self.batch.Merge(bytes_to_slice(key), bytes_to_slice(value))
 
     def delete(self, key):
-        self.batch.Delete(str_to_slice(key))
+        self.batch.Delete(bytes_to_slice(key))
 
     def clear(self):
         self.batch.Clear()
@@ -986,7 +991,7 @@ cdef class DB(object):
         opts.disableWAL = disable_wal
 
         check_status(
-            self.db.Put(opts, str_to_slice(key), str_to_slice(value)))
+            self.db.Put(opts, bytes_to_slice(key), bytes_to_slice(value)))
 
     def delete(self, key, sync=False, disable_wal=False):
         cdef options.WriteOptions opts
@@ -994,7 +999,7 @@ cdef class DB(object):
         opts.disableWAL = disable_wal
 
         check_status(
-            self.db.Delete(opts, str_to_slice(key)))
+            self.db.Delete(opts, bytes_to_slice(key)))
 
     def merge(self, key, value, sync=False, disable_wal=False):
         cdef options.WriteOptions opts
@@ -1002,7 +1007,7 @@ cdef class DB(object):
         opts.disableWAL = disable_wal
 
         check_status(
-            self.db.Merge(opts, str_to_slice(key), str_to_slice(value)))
+            self.db.Merge(opts, bytes_to_slice(key), bytes_to_slice(value)))
 
     def write(self, WriteBatch batch, sync=False, disable_wal=False):
         cdef options.WriteOptions opts
@@ -1018,11 +1023,11 @@ cdef class DB(object):
 
         st = self.db.Get(
             self.build_read_opts(self.__parse_read_opts(*args, **kwargs)),
-            str_to_slice(key),
+            bytes_to_slice(key),
             cython.address(res))
 
         if st.ok():
-            return res
+            return string_to_bytes(res)
         elif st.IsNotFound():
             return None
         else:
@@ -1034,7 +1039,7 @@ cdef class DB(object):
 
         cdef vector[slice_.Slice] c_keys
         for key in keys:
-            c_keys.push_back(str_to_slice(key))
+            c_keys.push_back(bytes_to_slice(key))
 
         cdef vector[Status] res = self.db.MultiGet(
             self.build_read_opts(self.__parse_read_opts(*args, **kwargs)),
@@ -1044,7 +1049,7 @@ cdef class DB(object):
         cdef dict ret_dict = {}
         for index in range(len(keys)):
             if res[index].ok():
-                ret_dict[keys[index]] = values[index]
+                ret_dict[keys[index]] = string_to_bytes(values[index])
             elif res[index].IsNotFound():
                 ret_dict[keys[index]] = None
             else:
@@ -1063,13 +1068,13 @@ cdef class DB(object):
             value_found = False
             exists = self.db.KeyMayExist(
                 opts,
-                str_to_slice(key),
+                bytes_to_slice(key),
                 cython.address(value),
                 cython.address(value_found))
 
             if exists:
                 if value_found:
-                    return (True, value)
+                    return (True, string_to_bytes(value))
                 else:
                     return (True, None)
             else:
@@ -1077,7 +1082,7 @@ cdef class DB(object):
         else:
             exists = self.db.KeyMayExist(
                 opts,
-                str_to_slice(key),
+                bytes_to_slice(key),
                 cython.address(value))
 
             return (exists, None)
@@ -1112,8 +1117,8 @@ cdef class DB(object):
     def get_property(self, prop):
         cdef string value
 
-        if self.db.GetProperty(str_to_slice(prop), cython.address(value)):
-            return value
+        if self.db.GetProperty(bytes_to_slice(prop), cython.address(value)):
+            return string_to_bytes(value)
         else:
             return None
 
@@ -1125,11 +1130,11 @@ cdef class DB(object):
         ret = []
         for ob in metadata:
             t = {}
-            t['name'] = ob.name
+            t['name'] = string_to_path(ob.name)
             t['level'] = ob.level
             t['size'] = ob.size
-            t['smallestkey'] = ob.smallestkey
-            t['largestkey'] = ob.largestkey
+            t['smallestkey'] = string_to_bytes(ob.smallestkey)
+            t['largestkey'] = string_to_bytes(ob.largestkey)
             t['smallest_seqno'] = ob.smallest_seqno
             t['largest_seqno'] = ob.largest_seqno
 
@@ -1216,7 +1221,7 @@ cdef class BaseIterator(object):
         self.ptr.SeekToLast()
 
     cpdef seek(self, key):
-        self.ptr.Seek(str_to_slice(key))
+        self.ptr.Seek(bytes_to_slice(key))
 
     cdef object get_ob(self):
         return None
@@ -1224,17 +1229,17 @@ cdef class BaseIterator(object):
 @cython.internal
 cdef class KeysIterator(BaseIterator):
     cdef object get_ob(self):
-        return slice_to_str(self.ptr.key())
+        return slice_to_bytes(self.ptr.key())
 
 @cython.internal
 cdef class ValuesIterator(BaseIterator):
     cdef object get_ob(self):
-        return slice_to_str(self.ptr.value())
+        return slice_to_bytes(self.ptr.value())
 
 @cython.internal
 cdef class ItemsIterator(BaseIterator):
     cdef object get_ob(self):
-        return (slice_to_str(self.ptr.key()), slice_to_str(self.ptr.value()))
+        return (slice_to_bytes(self.ptr.key()), slice_to_bytes(self.ptr.value()))
 
 @cython.internal
 cdef class ReversedIterator(object):

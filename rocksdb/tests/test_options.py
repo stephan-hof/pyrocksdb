@@ -3,13 +3,13 @@ import rocksdb
 
 class TestFilterPolicy(rocksdb.interfaces.FilterPolicy):
     def create_filter(self, keys):
-        return 'nix'
+        return b'nix'
 
     def key_may_match(self, key, fil):
         return True
 
     def name(self):
-        return 'testfilter'
+        return b'testfilter'
 
 class TestMergeOperator(rocksdb.interfaces.MergeOperator):
     def full_merge(self, *args, **kwargs):
@@ -19,7 +19,7 @@ class TestMergeOperator(rocksdb.interfaces.MergeOperator):
         return (False, None)
 
     def name(self):
-        return 'testmergeop'
+        return b'testmergeop'
 
 class TestOptions(unittest.TestCase):
     def test_simple(self):

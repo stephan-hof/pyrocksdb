@@ -1,8 +1,5 @@
 from libcpp.string cimport string
 from libcpp cimport bool as cpp_bool
-from cpython.string cimport PyString_Size
-from cpython.string cimport PyString_AsString
-from cpython.string cimport PyString_FromStringAndSize
 
 cdef extern from "rocksdb/slice.h" namespace "rocksdb":
     cdef cppclass Slice:
@@ -21,9 +18,3 @@ cdef extern from "rocksdb/slice.h" namespace "rocksdb":
         string ToString(cpp_bool)
         int compare(const Slice&)
         cpp_bool starts_with(const Slice&)
-
-cdef inline Slice str_to_slice(str ob):
-    return Slice(PyString_AsString(ob), PyString_Size(ob))
-
-cdef inline str slice_to_str(Slice ob):
-    return PyString_FromStringAndSize(ob.data(), ob.size())
