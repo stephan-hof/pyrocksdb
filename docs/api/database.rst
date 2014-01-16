@@ -8,7 +8,7 @@ Database object
 
     .. py:method:: __init__(db_name, Options opts, read_only=False)
 
-        :param string db_name:  Name of the database to open
+        :param unicode db_name:  Name of the database to open
         :param opts: Options for this specific database
         :type opts: :py:class:`rocksdb.Options`
         :param bool read_only: If ``True`` the database is opened read-only.

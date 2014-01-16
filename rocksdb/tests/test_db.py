@@ -24,6 +24,12 @@ class TestDB(unittest.TestCase, TestHelper):
     def tearDown(self):
         self._close_db()
 
+    def test_unicode_path(self):
+        name = b'/tmp/M\xc3\xbcnchen'.decode('utf8')
+        rocksdb.DB(name, rocksdb.Options(create_if_missing=True))
+        self.addCleanup(shutil.rmtree, name)
+        self.assertTrue(os.path.isdir(name))
+
     def test_get_none(self):
         self.assertIsNone(self.db.get('xxx'))
 

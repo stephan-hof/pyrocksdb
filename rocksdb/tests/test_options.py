@@ -52,3 +52,12 @@ class TestOptions(unittest.TestCase):
         ob = rocksdb.LRUCache(100)
         opts.block_cache = ob
         self.assertEqual(ob, opts.block_cache)
+
+    def test_unicode_path(self):
+        name = b'/tmp/M\xc3\xbcnchen'.decode('utf8')
+        opts = rocksdb.Options()
+        opts.db_log_dir = name
+        opts.wal_dir = name
+
+        self.assertEqual(name, opts.db_log_dir)
+        self.assertEqual(name, opts.wal_dir)

@@ -7,6 +7,7 @@ from cython.operator cimport dereference as deref
 from cpython.string cimport PyString_AsString
 from cpython.string cimport PyString_Size
 from cpython.string cimport PyString_FromString
+from cpython.unicode cimport PyUnicode_Decode
 
 from std_memory cimport shared_ptr
 cimport options
@@ -24,6 +25,7 @@ from slice_ cimport slice_to_str
 from slice_ cimport str_to_slice
 from status cimport Status
 
+import sys
 from interfaces import MergeOperator as IMergeOperator
 from interfaces import AssociativeMergeOperator as IAssociativeMergeOperator
 from interfaces import FilterPolicy as IFilterPolicy
@@ -63,6 +65,23 @@ cdef check_status(const Status& st):
     raise Exception("Unknown error: %s" % st.ToString())
 ######################################################
 
+
+cdef string bytes_to_string(bytes path) except *:
+    return string(PyBytes_AsString(path), PyBytes_Size(path))
+
+## only for filsystem paths
+cdef string path_to_string(object path) except *:
+    if isinstance(path, bytes):
+        return bytes_to_string(path)
+    if isinstance(path, unicode):
+        path = path.encode(sys.getfilesystemencoding())
+        return bytes_to_string(path)
+    else:
+       raise TypeError("Wrong type for path: %s" % path)
+
+cdef object string_to_path(string path):
+    fs_encoding = sys.getfilesystemencoding()
+    return PyUnicode_Decode(path.c_str(), path.size(), fs_encoding, "replace")
 
 ## Here comes the stuff for the comparator
 @cython.internal
@@ -609,15 +628,15 @@ cdef class Options(object):
 
     property db_log_dir:
         def __get__(self):
-            return self.opts.db_log_dir
+            return string_to_path(self.opts.db_log_dir)
         def __set__(self, value):
-            self.opts.db_log_dir = value
+            self.opts.db_log_dir = path_to_string(value)
 
     property wal_dir:
         def __get__(self):
-            return self.opts.wal_dir
+            return string_to_path(self.opts.wal_dir)
         def __set__(self, value):
-            self.opts.wal_dir = value
+            self.opts.wal_dir = path_to_string(value)
 
     property disable_seek_compaction:
         def __get__(self):
@@ -946,14 +965,14 @@ cdef class DB(object):
             check_status(
                 db.DB_OpenForReadOnly(
                     deref(opts.opts),
-                    db_name,
+                    path_to_string(db_name),
                     cython.address(self.db),
                     False))
         else:
             check_status(
                 db.DB_Open(
                     deref(opts.opts),
-                    db_name,
+                    path_to_string(db_name),
                     cython.address(self.db)))
 
         self.opts = opts

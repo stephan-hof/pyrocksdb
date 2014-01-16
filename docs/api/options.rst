@@ -329,7 +329,7 @@ Options object
         and the db data dir's absolute path will be used as the log file
         name's prefix.
 
-        | *Type:* ``string``
+        | *Type:* ``unicode``
         | *Default:* ``""``
 
     .. py:attribute:: wal_dir
@@ -340,7 +340,7 @@ Options object
         If it is non empty, the log files will be in kept the specified dir.
         When destroying the db, all log files in wal_dir and the dir itself is deleted
 
-        | *Type:* ``string``
+        | *Type:* ``unicode``
         | *Default:* ``""``
 
     .. py:attribute:: disable_seek_compaction
