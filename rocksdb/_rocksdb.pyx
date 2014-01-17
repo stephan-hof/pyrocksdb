@@ -936,7 +936,7 @@ cdef class WriteBatch(object):
 
     def __cinit__(self, data=None):
         if data is not None:
-            self.batch = new db.WriteBatch(data)
+            self.batch = new db.WriteBatch(bytes_to_string(data))
         else:
             self.batch = new db.WriteBatch()
 
@@ -956,7 +956,7 @@ cdef class WriteBatch(object):
         self.batch.Clear()
 
     def data(self):
-        return self.batch.Data()
+        return string_to_bytes(self.batch.Data())
 
     def count(self):
         return self.batch.Count()
