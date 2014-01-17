@@ -3,18 +3,18 @@ from libcpp cimport bool as cpp_bool
 
 cdef extern from "rocksdb/slice.h" namespace "rocksdb":
     cdef cppclass Slice:
-        Slice()
-        Slice(const char*, size_t)
-        Slice(const string&)
-        Slice(const char*)
+        Slice() nogil
+        Slice(const char*, size_t) nogil
+        Slice(const string&) nogil
+        Slice(const char*) nogil
 
-        const char* data()
-        size_t size()
-        cpp_bool empty()
-        char operator[](int)
-        void clear()
-        void remove_prefix(size_t)
-        string ToString()
-        string ToString(cpp_bool)
-        int compare(const Slice&)
-        cpp_bool starts_with(const Slice&)
+        const char* data() nogil
+        size_t size() nogil
+        cpp_bool empty() nogil
+        char operator[](int) nogil
+        void clear() nogil
+        void remove_prefix(size_t) nogil
+        string ToString() nogil
+        string ToString(cpp_bool) nogil
+        int compare(const Slice&) nogil
+        cpp_bool starts_with(const Slice&) nogil

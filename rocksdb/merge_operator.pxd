@@ -34,7 +34,7 @@ ctypedef cpp_bool (*partial_merge_func)(
 
 cdef extern from "cpp/merge_operator_wrapper.hpp" namespace "py_rocks":
     cdef cppclass AssociativeMergeOperatorWrapper:
-        AssociativeMergeOperatorWrapper(string, void*, merge_func)
+        AssociativeMergeOperatorWrapper(string, void*, merge_func) nogil except+
 
     cdef cppclass MergeOperatorWrapper:
         MergeOperatorWrapper(
@@ -42,4 +42,4 @@ cdef extern from "cpp/merge_operator_wrapper.hpp" namespace "py_rocks":
             void*,
             void*,
             full_merge_func,
-            partial_merge_func)
+            partial_merge_func) nogil except+
