@@ -20,8 +20,8 @@ Database object
 
         Set the database entry for "key" to "value".
 
-        :param string key: Name for this entry
-        :param string value: Data for this entry
+        :param bytes key: Name for this entry
+        :param bytes value: Data for this entry
         :param bool sync: 
             If ``True``, the write will be flushed from the operating system
             buffer cache (by calling WritableFile::Sync()) before the write
@@ -46,7 +46,7 @@ Database object
 
         Remove the database entry for "key".
 
-        :param string key: Name to delete
+        :param bytes key: Name to delete
         :param sync: See :py:meth:`rocksdb.DB.put`
         :param disable_wal: See :py:meth:`rocksdb.DB.put`
         :raises rocksdb.errors.NotFound: If the key did not exists
@@ -74,7 +74,7 @@ Database object
 
     .. py:method:: get(key, verify_checksums=False, fill_cache=True, prefix_seek=False, snapshot=None, read_tier="all")
 
-        :param string key: Name to get
+        :param bytes key: Name to get
 
         :param bool verify_checksums: 
             If ``True``, all data read from underlying storage will be
@@ -110,12 +110,12 @@ Database object
     .. py:method:: multi_get(keys, verify_checksums=False, fill_cache=True, prefix_seek=False, snapshot=None, read_tier="all")
 
         :param keys: Keys to fetch
-        :type keys: list of strings
+        :type keys: list of bytes
 
         For the other params see :py:meth:`rocksdb.DB.get`
 
         :returns:
-            A ``dict`` where the value is either ``string`` or ``None`` if not found
+            A ``dict`` where the value is either ``bytes`` or ``None`` if not found
 
         :raises: If the fetch for a single key fails
         
@@ -131,7 +131,7 @@ Database object
         This check is potentially lighter-weight than invoking DB::get().
         One way to make this lighter weight is to avoid doing any IOs.
 
-        :param string key: Key to check
+        :param bytes key: Key to check
         :param bool fetch: Obtain also the value if found
 
         For the other params see :py:meth:`rocksdb.DB.get`
@@ -146,7 +146,7 @@ Database object
 
         Iterate over the keys
 
-        :param string prefix: Not implemented yet
+        :param bytes prefix: Not implemented yet
 
         For other params see :py:meth:`rocksdb.DB.get`
 
@@ -160,7 +160,7 @@ Database object
 
         Iterate over the values
 
-        :param string prefix: Not implemented yet
+        :param bytes prefix: Not implemented yet
 
         For other params see :py:meth:`rocksdb.DB.get`
 
@@ -174,7 +174,7 @@ Database object
 
         Iterate over the items
 
-        :param string prefix: Not implemented yet
+        :param bytes prefix: Not implemented yet
 
         For other params see :py:meth:`rocksdb.DB.get`
 
@@ -197,18 +197,18 @@ Database object
 
         DB implementations can export properties about their state
         via this method. If "property" is a valid property understood by this
-        DB implementation, a string with its value is returned.
+        DB implementation, a byte string with its value is returned.
         Otherwise ``None``
         
         Valid property names include:
         
-        * ``"rocksdb.num-files-at-level<N>"``: return the number of files at level <N>,
+        * ``b"rocksdb.num-files-at-level<N>"``: return the number of files at level <N>,
             where <N> is an ASCII representation of a level number (e.g. "0").
 
-        * ``"rocksdb.stats"``: returns a multi-line string that describes statistics
+        * ``b"rocksdb.stats"``: returns a multi-line byte string that describes statistics
             about the internal operation of the DB.
 
-        * ``"rocksdb.sstables"``: returns a multi-line string that describes all
+        * ``b"rocksdb.sstables"``: returns a multi-line byte string that describes all
             of the sstables that make up the db contents.
 
     .. py:method:: get_live_files_metadata()
@@ -265,7 +265,7 @@ Iterator
 
     .. py:method:: seek(key)
     
-        :param string key: Position at the first key in the source that at or past
+        :param bytes key: Position at the first key in the source that at or past
  
     Methods to support the python iterator protocol
 
@@ -294,16 +294,16 @@ WriteBatch
      after the following batch is written::
      
         batch = rocksdb.WriteBatch()
-        batch.put("key", "v1")
-        batch.delete("key")
-        batch.put("key", "v2")
-        batch.put("key", "v3")
+        batch.put(b"key", b"v1")
+        batch.delete(b"key")
+        batch.put(b"key", b"v2")
+        batch.put(b"key", b"v3")
 
     .. py:method:: __init__(data=None)
 
         Creates a WriteBatch.
 
-        :param string data:
+        :param bytes data:
             A serialized version of a previous WriteBatch. As retrieved
             from a previous .data() call. If ``None`` a empty WriteBatch is
             generated
@@ -312,21 +312,21 @@ WriteBatch
     
         Store the mapping "key->value" in the database.
 
-        :param string key: Name of the entry to store
-        :param string value: Data of this entry
+        :param bytes key: Name of the entry to store
+        :param bytes value: Data of this entry
 
     .. py:method:: merge(key, value)
     
         Merge "value" with the existing value of "key" in the database.
 
-        :param string key: Name of the entry to merge
-        :param string value: Data to merge
+        :param bytes key: Name of the entry to merge
+        :param bytes value: Data to merge
 
     .. py:method:: delete(key)
  
         If the database contains a mapping for "key", erase it.  Else do nothing.
 
-        :param string key: Key to erase
+        :param bytes key: Key to erase
 
     .. py:method:: clear()
 
@@ -336,7 +336,7 @@ WriteBatch
 
         Retrieve the serialized version of this batch.
 
-        :rtype: string
+        :rtype: ``bytes``
 
     .. py:method:: count()
     

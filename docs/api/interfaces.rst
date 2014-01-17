@@ -15,8 +15,8 @@ Comparator
 
         Three-way comparison.
 
-        :param string a: First field to compare
-        :param string b: Second field to compare
+        :param bytes a: First field to compare
+        :param bytes b: Second field to compare
         :returns: * -1 if a < b
                   * 0 if a == b
                   * 1 if a > b
@@ -35,7 +35,7 @@ Comparator
         Names starting with "rocksdb." are reserved and should not be used
         by any clients of this package.
 
-        :rtype: ``string``
+        :rtype: ``bytes``
 
 Merge Operator
 ==============
@@ -75,11 +75,11 @@ AssociativeMergeOperator
 
         Gives the client a way to express the read -> modify -> write semantics
 
-        :param string key: The key that's associated with this merge operation
-        :param string existing_value: The current value in the db.
+        :param bytes key: The key that's associated with this merge operation
+        :param bytes existing_value: The current value in the db.
                                       ``None`` indicates the key does not exist
                                       before this op
-        :param string value: The value to update/merge the existing_value with
+        :param bytes value: The value to update/merge the existing_value with
 
         :returns: ``True`` and the new value on success.
                   All values passed in will be client-specific values.
@@ -88,7 +88,7 @@ AssociativeMergeOperator
                   The client should assume that this will be treated as an
                   error by the library.
 
-        :rtype: ``(bool, string)``
+        :rtype: ``(bool, bytes)``
 
     .. py:method:: name()
 
@@ -96,7 +96,7 @@ AssociativeMergeOperator
         For example a DB created with one MergeOperator is accessed using a
         different MergeOperator.
 
-        :rtype: ``string``
+        :rtype: ``bytes``
 
 MergeOperator
 -------------
@@ -104,21 +104,21 @@ MergeOperator
 .. py:class:: rocksdb.interfaces.MergeOperator
 
     .. py:method:: full_merge(key, existing_value, operand_list)
-  
+
         Gives the client a way to express the read -> modify -> write semantics
 
-        :param string key: The key that's associated with this merge operation.
+        :param bytes key: The key that's associated with this merge operation.
                            Client could multiplex the merge operator based on it
                            if the key space is partitioned and different subspaces
                            refer to different types of data which have different
                            merge operation semantics
 
-        :param string existing_value: The current value in the db.
-                                      ``None`` indicates the key does not exist
-                                      before this op
+        :param bytes existing_value: The current value in the db.
+                                     ``None`` indicates the key does not exist
+                                     before this op
 
         :param operand_list: The sequence of merge operations to apply.
-        :type operand_list: list of strings
+        :type operand_list: list of bytes 
 
         :returns: ``True`` and the new value on success.
                   All values passed in will be client-specific values.
@@ -127,7 +127,7 @@ MergeOperator
                   The client should assume that this will be treated as an
                   error by the library.
 
-        :rtype: ``(bool, string)``
+        :rtype: ``(bool, bytes)``
 
     .. py:method:: partial_merge(key, left_operand, right_operand)
 
@@ -147,10 +147,10 @@ MergeOperator
         operations, and apply them in the correct order once a base-value
         (a Put/Delete/End-of-Database) is seen.
 
-        :param string key: the key that is associated with this merge operation.
-        :param string left_operand: First operand to merge
-        :param string right_operand: Second operand to merge
-        :rtype: ``(bool, string)``
+        :param bytes key: the key that is associated with this merge operation.
+        :param bytes left_operand: First operand to merge
+        :param bytes right_operand: Second operand to merge
+        :rtype: ``(bool, bytes)``
 
         .. note::
 
@@ -166,7 +166,7 @@ MergeOperator
         For example a DB created with one MergeOperator is accessed using a
         different MergeOperator.
 
-        :rtype: ``string``
+        :rtype: ``bytes``
 
 FilterPolicy
 ============
@@ -180,17 +180,17 @@ FilterPolicy
         :param keys: list of keys (potentially with duplicates)
                      that are ordered according to the user supplied
                      comparator. 
-        :type keys: list of strings
+        :type keys: list of bytes
 
         :returns: A filter that summarizes keys
-        :rtype: ``string``
+        :rtype: ``bytes``
 
     .. py:method:: key_may_match(key, filter)
 
         Check if the key is maybe in the filter. 
 
-        :param string key: Key for a single entry inside the database
-        :param string filter: Contains the data returned by a preceding call
+        :param bytes key: Key for a single entry inside the database
+        :param bytes filter: Contains the data returned by a preceding call
                               to create_filter on this class
         :returns: This method must return ``True`` if the key was in the list
                   of keys passed to create_filter().
@@ -207,4 +207,4 @@ FilterPolicy
         must be changed.  Otherwise, old incompatible filters may be
         passed to methods of this type.
 
-        :rtype: ``string``
+        :rtype: ``bytes``

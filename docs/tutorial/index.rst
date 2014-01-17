@@ -27,9 +27,9 @@ A more production ready open can look like this ::
     db = rocksdb.DB("test.db", opts)
 
 It assings a cache of 2.5G, uses a bloom filter for faster lookups and keeps
-more data (64 MB) in memory before writting a .sst file
+more data (64 MB) in memory before writting a .sst file.
 
-About bytes and unicode
+About Bytes and Unicode
 ========================
 
 RocksDB stores all data as uninterpreted *byte strings*.
@@ -49,8 +49,7 @@ The only place where you can pass unicode objects are filesytem paths like
 
 * :py:attr:`rocksdb.Options.db_log_dir`
 
-To encode this unicode objects the `sys.getfilesystemencoding()` encoding is used
-
+To encode this path name, `sys.getfilesystemencoding()` encoding is used.
 
 Access
 ======
@@ -58,37 +57,37 @@ Access
 Store, Get, Delete is straight forward ::
 
     # Store
-    db.put("key", "value")
+    db.put(b"key", b"value")
 
     # Get
-    db.get("key")
+    db.get(b"key")
 
     # Delete
-    db.delete("key")
+    db.delete(b"key")
 
 It is also possible to gather modifications and
 apply them in a single operation ::
 
     batch = rocksdb.WriteBatch()
-    batch.put("key", "v1")
-    batch.delete("key")
-    batch.put("key", "v2")
-    batch.put("key", "v3")
+    batch.put(b"key", b"v1")
+    batch.delete(b"key")
+    batch.put(b"key", b"v2")
+    batch.put(b"key", b"v3")
 
     db.write(batch)
 
 Fetch of multiple values at once ::
 
-    db.put("key1", "v1")
-    db.put("key2", "v2")
+    db.put(b"key1", b"v1")
+    db.put(b"key2", b"v2")
 
-    ret = db.multi_get(["key1", "key2", "key3"])
+    ret = db.multi_get([b"key1", b"key2", b"key3"])
 
-    # prints "v1"
-    print ret["key1"]
+    # prints b"v1"
+    print ret[b"key1"]
 
     # prints None
-    print ret["key3"]
+    print ret[b"key3"]
 
 Iteration
 =========
@@ -96,22 +95,22 @@ Iteration
 Iterators behave slightly different than expected. Per default they are not
 valid. So you have to call one of its seek methods first ::
 
-    db.put("key1", "v1")
-    db.put("key2", "v2")
-    db.put("key3", "v3")
+    db.put(b"key1", b"v1")
+    db.put(b"key2", b"v2")
+    db.put(b"key3", b"v3")
 
     it = db.iterkeys()
     it.seek_to_first()
 
-    # prints ['key1', 'key2', 'key3']
+    # prints [b'key1', b'key2', b'key3']
     print list(it)
 
     it.seek_to_last()
-    # prints ['key3']
+    # prints [b'key3']
     print list(it)
 
-    it.seek('key2')
-    # prints ['key2', 'key3']
+    it.seek(b'key2')
+    # prints [b'key2', b'key3']
     print list(it)
 
 There are also methods to iterate over values/items ::
@@ -119,13 +118,13 @@ There are also methods to iterate over values/items ::
     it = db.itervalues()
     it.seek_to_first()
 
-    # prints ['v1', 'v2', 'v3']
+    # prints [b'v1', b'v2', b'v3']
     print list(it)
 
     it = db.iteritems()
     it.seek_to_first()
 
-    # prints [('key1', 'v1'), ('key2, 'v2'), ('key3', 'v3')]
+    # prints [(b'key1', b'v1'), (b'key2, b'v2'), (b'key3', b'v3')]
     print list(it)
 
 Reversed iteration ::
@@ -133,7 +132,7 @@ Reversed iteration ::
     it = db.iteritems()
     it.seek_to_last()
 
-    # prints [('key3', 'v3'), ('key2', 'v2'), ('key1', 'v1')]
+    # prints [(b'key3', b'v3'), (b'key2', b'v2'), (b'key1', b'v1')]
     print list(reversed(it))
 
 
@@ -142,23 +141,23 @@ Snapshots
 
 Snapshots are nice to get a consistent view on the database ::
 
-    self.db.put("a", "1")
-    self.db.put("b", "2")
+    self.db.put(b"a", b"1")
+    self.db.put(b"b", b"2")
 
     snapshot = self.db.snapshot()
-    self.db.put("a", "2")
-    self.db.delete("b")
+    self.db.put(b"a", b"2")
+    self.db.delete(b"b")
 
     it = self.db.iteritems()
     it.seek_to_first()
 
-    # prints {'a': '2'}
+    # prints {b'a': b'2'}
     print dict(it)
 
     it = self.db.iteritems(snapshot=snapshot)
     it.seek_to_first()
 
-    # prints {'a': '1', 'b': '2'}
+    # prints {b'a': b'1', b'b': b'2'}
     print dict(it)
 
 
@@ -172,11 +171,12 @@ The simple Associative merge ::
     class AssocCounter(rocksdb.interfaces.AssociativeMergeOperator):
         def merge(self, key, existing_value, value):
             if existing_value:
-                return (True, str(int(existing_value) + int(value)))
+                s = int(existing_value) + int(value)
+                return (True, str(s).encode('ascii'))
             return (True, value)
 
         def name(self):
-            return 'AssocCounter'
+            return b'AssocCounter'
 
 
     opts = rocksdb.Options()
@@ -184,8 +184,10 @@ The simple Associative merge ::
     opts.merge_operator = AssocCounter()
     db = rocksdb.DB('test.db', opts)
 
-    db.merge("a", "1")
-    db.merge("a", "1")
+    db.merge(b"a", b"1")
+    db.merge(b"a", b"1")
 
-    # prints '2'
-    print db.get("a")
+    # prints b'2'
+    print db.get(b"a")
+
+
