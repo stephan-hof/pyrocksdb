@@ -56,3 +56,22 @@ class FilterPolicy:
     @abstractmethod
     def key_may_match(self, key, filter_):
         pass
+
+class SliceTransform:
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def name(self):
+        pass
+
+    @abstractmethod
+    def transform(self, src):
+        pass
+
+    @abstractmethod
+    def in_domain(self, src):
+        pass
+
+    @abstractmethod
+    def in_range(self, dst):
+        pass

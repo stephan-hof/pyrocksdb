@@ -15,6 +15,7 @@ cimport options
 cimport merge_operator
 cimport filter_policy
 cimport comparator
+cimport slice_transform
 cimport cache
 cimport logger
 cimport snapshot
@@ -29,6 +30,7 @@ from interfaces import MergeOperator as IMergeOperator
 from interfaces import AssociativeMergeOperator as IAssociativeMergeOperator
 from interfaces import FilterPolicy as IFilterPolicy
 from interfaces import Comparator as IComparator
+from interfaces import SliceTransform as ISliceTransform
 import traceback
 import errors
 
@@ -426,7 +428,65 @@ cdef class PyLRUCache(PyCache):
 LRUCache = PyLRUCache
 ###############################
 
+### Here comes the stuff for SliceTransform
+@cython.internal
+cdef class PySliceTransform(object):
+    cdef slice_transform.SliceTransform* transfomer
+    cdef object ob
 
+    def __cinit__(self, object ob):
+        if not isinstance(ob, ISliceTransform):
+            raise TypeError("%s is not of type %s" % (ob, ISliceTransform))
+
+        self.ob = ob
+        self.transfomer = <slice_transform.SliceTransform*>(
+            new slice_transform.SliceTransformWrapper(
+                bytes_to_string(ob.name()),
+                <void*>ob,
+                slice_transform_callback,
+                slice_in_domain_callback,
+                slice_in_range_callback))
+
+    def __dealloc__(self):
+        del self.transfomer
+
+    cdef object get_ob(self):
+        return self.ob
+
+    cdef slice_transform.SliceTransform* get_transformer(self):
+        return self.transfomer
+
+cdef Slice slice_transform_callback(void* ctx, const Slice& src) with gil:
+    cdef size_t offset
+    cdef size_t size
+
+    try:
+        ret = (<object>ctx).transform(slice_to_bytes(src))
+        offset = ret[0]
+        size = ret[1]
+        return Slice(src.data() + offset, size)
+    except Exception as error:
+        print error
+        # TODO: Use the rocksdb logger
+        return src
+
+cdef cpp_bool slice_in_domain_callback(void* ctx, const Slice& src) with gil:
+    try:
+        return (<object>ctx).in_domain(slice_to_bytes(src))
+    except Exception as error:
+        print error
+        # TODO: Use the rocksdb logger
+        return False
+
+cdef cpp_bool slice_in_range_callback(void* ctx, const Slice& src) with gil:
+    try:
+        return (<object>ctx).in_range(slice_to_bytes(src))
+    except Exception as error:
+        print error
+        # TODO: Use rocksdb logger
+        return False
+
+###########################################
 cdef class CompressionType(object):
     no_compression = u'no_compression'
     snappy_compression = u'snappy_compression'
