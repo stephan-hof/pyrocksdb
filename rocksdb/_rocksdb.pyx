@@ -1259,6 +1259,7 @@ cdef class BaseIterator(object):
         cdef object ret = self.get_ob()
         with nogil:
             self.ptr.Next()
+        check_status(self.ptr.status())
         return ret
 
     def __reversed__(self):
@@ -1267,15 +1268,18 @@ cdef class BaseIterator(object):
     cpdef seek_to_first(self):
         with nogil:
             self.ptr.SeekToFirst()
+        check_status(self.ptr.status())
 
     cpdef seek_to_last(self):
         with nogil:
             self.ptr.SeekToLast()
+        check_status(self.ptr.status())
 
     cpdef seek(self, key):
         cdef Slice c_key = bytes_to_slice(key)
         with nogil:
             self.ptr.Seek(c_key)
+        check_status(self.ptr.status())
 
     cdef object get_ob(self):
         return None
@@ -1286,6 +1290,7 @@ cdef class KeysIterator(BaseIterator):
         cdef Slice c_key
         with nogil:
             c_key = self.ptr.key()
+        check_status(self.ptr.status())
         return slice_to_bytes(c_key)
 
 @cython.internal
@@ -1294,6 +1299,7 @@ cdef class ValuesIterator(BaseIterator):
         cdef Slice c_value
         with nogil:
             c_value = self.ptr.value()
+        check_status(self.ptr.status())
         return slice_to_bytes(c_value)
 
 @cython.internal
@@ -1304,6 +1310,7 @@ cdef class ItemsIterator(BaseIterator):
         with nogil:
             c_key = self.ptr.key()
             c_value = self.ptr.value()
+        check_status(self.ptr.status())
         return (slice_to_bytes(c_key), slice_to_bytes(c_value))
 
 @cython.internal
@@ -1334,4 +1341,5 @@ cdef class ReversedIterator(object):
 
         cdef object ret = self.it.get_ob()
         self.it.ptr.Prev()
+        check_status(self.it.ptr.status())
         return ret
