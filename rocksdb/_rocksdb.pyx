@@ -1340,6 +1340,7 @@ cdef class ReversedIterator(object):
             raise StopIteration()
 
         cdef object ret = self.it.get_ob()
-        self.it.ptr.Prev()
+        with nogil:
+            self.it.ptr.Prev()
         check_status(self.it.ptr.status())
         return ret
