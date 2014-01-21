@@ -10,6 +10,7 @@ from cache cimport Cache
 from logger cimport Logger
 from slice_ cimport Slice
 from snapshot cimport Snapshot
+from slice_transform cimport SliceTransform
 
 cdef extern from "rocksdb/options.h" namespace "rocksdb":
     ctypedef enum CompressionType:
@@ -44,7 +45,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         CompressionType compression
         # TODO: compression_per_level
         # TODO: compression_opts
-        # TODO: prefix_extractor
+        SliceTransform* prefix_extractor
         cpp_bool whole_key_filtering
         int num_levels
         int level0_file_num_compaction_trigger

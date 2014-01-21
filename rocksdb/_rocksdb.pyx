@@ -500,6 +500,7 @@ cdef class Options(object):
     cdef PyFilterPolicy py_filter_policy
     cdef PyCache py_block_cache
     cdef PyCache py_block_cache_compressed
+    cdef PySliceTransform py_prefix_extractor
 
     def __cinit__(self):
         self.opts = new options.Options()
@@ -513,6 +514,7 @@ cdef class Options(object):
         self.py_filter_policy = None
         self.py_block_cache = None
         self.py_block_cache_compressed = None
+        self.py_prefix_extractor = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -955,6 +957,16 @@ cdef class Options(object):
 
             self.opts.filter_policy = self.py_filter_policy.get_policy()
 
+    property prefix_extractor:
+        def __get__(self):
+            if self.py_prefix_extractor is None:
+                return None
+            return self.py_prefix_extractor.get_ob()
+
+        def __set__(self, value):
+            self.py_prefix_extractor = PySliceTransform(value)
+            self.opts.prefix_extractor = self.py_prefix_extractor.get_transformer()
+
     property block_cache:
         def __get__(self):
             if self.py_block_cache is None:
@@ -1188,8 +1200,12 @@ cdef class DB(object):
     def iterkeys(self, prefix=None, *args, **kwargs):
         cdef options.ReadOptions opts
         cdef KeysIterator it
+
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
+
         it = KeysIterator(self)
+        it.set_prefix(opts, prefix)
+
         with nogil:
             it.ptr = self.db.NewIterator(opts)
         return it
@@ -1197,8 +1213,12 @@ cdef class DB(object):
     def itervalues(self, prefix=None, *args, **kwargs):
         cdef options.ReadOptions opts
         cdef ValuesIterator it
+
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
+
         it = ValuesIterator(self)
+        it.set_prefix(opts, prefix)
+
         with nogil:
             it.ptr = self.db.NewIterator(opts)
         return it
@@ -1206,8 +1226,12 @@ cdef class DB(object):
     def iteritems(self, prefix=None, *args, **kwargs):
         cdef options.ReadOptions opts
         cdef ItemsIterator it
+
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
+
         it = ItemsIterator(self)
+        it.set_prefix(opts, prefix)
+
         with nogil:
             it.ptr = self.db.NewIterator(opts)
         return it
@@ -1300,6 +1324,9 @@ cdef class Snapshot(object):
 cdef class BaseIterator(object):
     cdef iterator.Iterator* ptr
     cdef DB db
+    # To keep a reference to the prefix
+    cdef object prefix
+    cdef Slice c_prefix
 
     def __cinit__(self, DB db):
         self.db = db
@@ -1324,6 +1351,14 @@ cdef class BaseIterator(object):
 
     def __reversed__(self):
         return ReversedIterator(self)
+
+    cdef set_prefix(self, options.ReadOptions& opts, object prefix=None):
+        if prefix is None:
+            return
+
+        self.c_prefix = bytes_to_slice(prefix)
+        self.prefix = prefix
+        opts.prefix = cython.address(self.c_prefix)
 
     cpdef seek_to_first(self):
         with nogil:

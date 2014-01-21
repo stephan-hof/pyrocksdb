@@ -274,3 +274,42 @@ class TestComparator(unittest.TestCase, TestHelper):
             self.db.put(int_to_bytes(x), int_to_bytes(x))
 
         self.assertEqual(b'300', self.db.get(b'300'))
+
+class StaticPrefix(rocksdb.interfaces.SliceTransform):
+    def name(self):
+        return b'static'
+
+    def transform(self, src):
+        return (0, 5)
+
+    def in_domain(self, src):
+        return len(src) >= 5
+
+    def in_range(self, dst):
+        return len(dst) == 5
+
+class TestPrefixExtractor(unittest.TestCase, TestHelper):
+    def setUp(self):
+        opts = rocksdb.Options(create_if_missing=True)
+        opts.prefix_extractor = StaticPrefix()
+        self._clean()
+        self.db = rocksdb.DB('/tmp/test', opts)
+
+    def test_prefix(self):
+        for x in range(3000):
+            keyx = b'%s.x' % hex(x)[2:].zfill(5).encode('utf8')
+            keyy = b'%s.y' % hex(x)[2:].zfill(5).encode('utf8')
+            keyz = b'%s.z' % hex(x)[2:].zfill(5).encode('utf8')
+            self.db.put(keyx, b'x')
+            self.db.put(keyy, b'y')
+            self.db.put(keyz, b'z')
+
+        self.assertEqual('x', self.db.get(b'00001.x'))
+        self.assertEqual('y', self.db.get(b'00001.y'))
+        self.assertEqual('z', self.db.get(b'00001.z'))
+
+        it = self.db.iterkeys(prefix=b'00002')
+        it.seek(b'00002')
+
+        ref = ['00002.x', '00002.y', '00002.z']
+        self.assertEqual(ref, list(it))
