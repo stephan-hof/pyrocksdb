@@ -464,6 +464,10 @@ cdef Slice slice_transform_callback(void* ctx, const Slice& src) with gil:
         ret = (<object>ctx).transform(slice_to_bytes(src))
         offset = ret[0]
         size = ret[1]
+        if (offset + size) > src.size():
+            msg = "offset(%i) + size(%i) is bigger than slice(%i)"
+            raise Exception(msg  % (offset, size, src.size()))
+
         return Slice(src.data() + offset, size)
     except Exception as error:
         print error
