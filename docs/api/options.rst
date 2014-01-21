@@ -693,6 +693,28 @@ Options object
 
         *Default:* ``None``
 
+    .. py:attribute:: prefix_extractor
+
+        If not ``None``, use the specified function to determine the
+        prefixes for keys. These prefixes will be placed in the filter.
+        Depending on the workload, this can reduce the number of read-IOP
+        cost for scans when a prefix is passed to the calls generating an
+        iterator (:py:meth:`rocksdb.DB.iterkeys` ...).
+
+        A python prefix_extractor must implement the
+        :py:class:`rocksdb.interfaces.SliceTransform` interface
+
+        For prefix filtering to work properly, "prefix_extractor" and "comparator"
+        must be such that the following properties hold:
+
+        1. ``key.starts_with(prefix(key))``
+        2. ``compare(prefix(key), key) <= 0``
+        3. ``If compare(k1, k2) <= 0, then compare(prefix(k1), prefix(k2)) <= 0``
+        4. ``prefix(prefix(key)) == prefix(key)``
+
+    *Default:* ``None``
+
+
 CompressionTypes
 ================
 

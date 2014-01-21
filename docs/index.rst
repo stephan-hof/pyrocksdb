@@ -20,10 +20,19 @@ Tested with python2.7 and python3.3
     API <api/index>
 
 
+Contributing
+------------
+
+Source can be found on `github <https://github.com/stephan-hof/pyrocksdb>`_.
+Feel free to fork and send pull-requests or create issues on the
+`github issue tracker <https://github.com/stephan-hof/pyrocksdb/issues>`_
+
 RoadMap/TODO
 ------------
 
-* support prefix API
+* wrap Backup/Restore https://github.com/facebook/rocksdb/wiki/How-to-backup-RocksDB%3F
+* wrap DestroyDB
+* wrap RepairDB
 * Links from tutorial to API pages (for example merge operator)
 
 Indices and tables

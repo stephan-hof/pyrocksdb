@@ -190,4 +190,47 @@ The simple Associative merge ::
     # prints b'2'
     print db.get(b"a")
 
+PrefixExtractor
+===============
 
+According to `Prefix API <https://github.com/facebook/rocksdb/wiki/Proposal-for-prefix-API>`_
+a prefix_extractor can reduce IO for scans within a prefix range.
+The following example presents a prefix extractor of a static size. So always
+the first 5 bytes are used as the prefix ::
+
+    class StaticPrefix(rocksdb.interfaces.SliceTransform):
+        def name(self):
+            return b'static'
+
+        def transform(self, src):
+            return (0, 5)
+
+        def in_domain(self, src):
+            return len(src) >= 5
+
+        def in_range(self, dst):
+            return len(dst) == 5
+
+    opts = rocksdb.Options()
+    opts.create_if_missing=True
+    opts.prefix_extractor = StaticPrefix()
+
+    db = rocksdb.DB('test.db', opts)
+
+    db.put(b'00001.x', b'x')
+    db.put(b'00001.y', b'y')
+    db.put(b'00001.z', b'z')
+
+    db.put(b'00002.x', b'x')
+    db.put(b'00002.y', b'y')
+    db.put(b'00002.z', b'z')
+
+    db.put(b'00003.x', b'x')
+    db.put(b'00003.y', b'y')
+    db.put(b'00003.z', b'z')
+
+    it = db.iteritems(prefix=b'00002')
+    it.seek(b'00002')
+
+    # prints {b'00002.z': b'z', b'00002.y': b'y', b'00002.x': b'x'}
+    print dict(it)

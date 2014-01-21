@@ -208,3 +208,47 @@ FilterPolicy
         passed to methods of this type.
 
         :rtype: ``bytes``
+
+
+SliceTransform
+==============
+
+.. py:class:: rocksdb.interfaces.SliceTransform
+
+    SliceTransform is currently used to implement the 'prefix-API' of rocksdb.
+    https://github.com/facebook/rocksdb/wiki/Proposal-for-prefix-API
+
+    .. py:method:: transform(src)
+
+        :param bytes src: Full key to extract the prefix from.
+
+        :returns:  A tuple of two interges ``(offset, size)``.
+                   Where the first integer is the offset within the ``src``
+                   and the second the size of the prefix after the offset.
+                   Which means the prefix is generted by ``src[offset:offset+size]``
+
+        :rtype: ``(int, int)``
+
+
+    .. py:method:: in_domain(src)
+
+        Decide if a prefix can be extraced from ``src``.
+        Only if this method returns ``True`` :py:meth:`transform` will be
+        called.
+
+        :param bytes src: Full key to check.
+        :rtype: ``bool``
+
+    .. py:method:: in_range(prefix)
+
+        Checks if prefix is a valid prefix
+
+        :param bytes prefix: Prefix to check.
+        :returns: ``True`` if ``prefix`` is a valid prefix.
+        :rtype: ``bool``
+
+    .. py:method:: name()
+
+        Return the name of this transformation.
+
+        :rtype: ``bytes``
