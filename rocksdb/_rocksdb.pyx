@@ -1309,6 +1309,7 @@ cdef class DB(object):
         def __get__(self):
             return self.opts
 
+@cython.no_gc_clear
 @cython.internal
 cdef class Snapshot(object):
     cdef const snapshot.Snapshot* ptr
