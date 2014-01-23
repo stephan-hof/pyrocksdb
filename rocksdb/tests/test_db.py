@@ -26,6 +26,11 @@ class TestDB(unittest.TestCase, TestHelper):
     def tearDown(self):
         self._close_db()
 
+    def test_options_used_twice(self):
+        expected = "Options object is already used by another DB"
+        with self.assertRaisesRegexp(Exception, expected):
+            rocksdb.DB("/tmp/test2", self.db.options)
+
     def test_unicode_path(self):
         name = b'/tmp/M\xc3\xbcnchen'.decode('utf8')
         rocksdb.DB(name, rocksdb.Options(create_if_missing=True))

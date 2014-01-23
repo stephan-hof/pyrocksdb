@@ -513,15 +513,17 @@ cdef class Options(object):
     cdef PyCache py_block_cache
     cdef PyCache py_block_cache_compressed
     cdef PySliceTransform py_prefix_extractor
+    # Used to protect sharing of Options with many DB-objects
+    cdef cpp_bool in_use
 
     def __cinit__(self):
         self.opts = NULL
         self.opts = new options.Options()
+        self.in_use = False
 
     def __dealloc__(self):
         if not self.opts == NULL:
             del self.opts
-
 
     def __init__(self, **kwargs):
         self.py_comparator = BytewiseComparator()
@@ -1057,6 +1059,7 @@ cdef class WriteBatch(object):
     def count(self):
         return self.batch.Count()
 
+@cython.no_gc_clear
 cdef class DB(object):
     cdef Options opts
     cdef db.DB* db
@@ -1065,8 +1068,11 @@ cdef class DB(object):
         cdef Status st
         cdef string db_path
         self.db = NULL
+        self.opts = None
 
 
+        if opts.in_use:
+            raise Exception("Options object is already used by another DB")
 
         db_path = path_to_string(db_name)
         if read_only:
@@ -1085,10 +1091,13 @@ cdef class DB(object):
 
         check_status(st)
         self.opts = opts
+        self.opts.in_use = True
 
     def __dealloc__(self):
         if not self.db == NULL:
             del self.db
+        if self.opts is not None:
+            self.opts.in_use = False
 
     def put(self, key, value, sync=False, disable_wal=False):
         cdef Status st
