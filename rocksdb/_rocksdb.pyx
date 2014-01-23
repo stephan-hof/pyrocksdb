@@ -115,6 +115,7 @@ cdef class PyGenericComparator(PyComparator):
     cdef object ob
 
     def __cinit__(self, object ob):
+        self.comparator_ptr = NULL
         if not isinstance(ob, IComparator):
             # TODO: raise wrong subclass error
             raise TypeError("Cannot set comparator: %s" % ob)
@@ -127,7 +128,8 @@ cdef class PyGenericComparator(PyComparator):
                 compare_callback))
 
     def __dealloc__(self):
-        del self.comparator_ptr
+        if not self.comparator_ptr == NULL:
+            del self.comparator_ptr
 
     cdef object get_ob(self):
         return self.ob
@@ -184,6 +186,7 @@ cdef class PyGenericFilterPolicy(PyFilterPolicy):
     cdef object ob
 
     def __cinit__(self, object ob):
+        self.policy = NULL
         if not isinstance(ob, IFilterPolicy):
             raise TypeError("Cannot set filter policy: %s" % ob)
 
@@ -196,7 +199,8 @@ cdef class PyGenericFilterPolicy(PyFilterPolicy):
                 key_may_match_callback)
 
     def __dealloc__(self):
-        del self.policy
+        if not self.policy == NULL:
+            del self.policy
 
     cdef object get_ob(self):
         return self.ob
@@ -228,10 +232,12 @@ cdef class PyBloomFilterPolicy(PyFilterPolicy):
     cdef const filter_policy.FilterPolicy* policy
 
     def __cinit__(self, int bits_per_key):
+        self.policy = NULL
         self.policy = filter_policy.NewBloomFilterPolicy(bits_per_key)
 
     def __dealloc__(self):
-        del self.policy
+        if not self.policy == NULL:
+            del self.policy
 
     def name(self):
         return PyBytes_FromString(self.policy.Name())
@@ -435,6 +441,7 @@ cdef class PySliceTransform(object):
     cdef object ob
 
     def __cinit__(self, object ob):
+        self.transfomer = NULL
         if not isinstance(ob, ISliceTransform):
             raise TypeError("%s is not of type %s" % (ob, ISliceTransform))
 
@@ -448,7 +455,8 @@ cdef class PySliceTransform(object):
                 slice_in_range_callback))
 
     def __dealloc__(self):
-        del self.transfomer
+        if not self.transfomer == NULL:
+            del self.transfomer
 
     cdef object get_ob(self):
         return self.ob
@@ -507,10 +515,13 @@ cdef class Options(object):
     cdef PySliceTransform py_prefix_extractor
 
     def __cinit__(self):
+        self.opts = NULL
         self.opts = new options.Options()
 
     def __dealloc__(self):
-        del self.opts
+        if not self.opts == NULL:
+            del self.opts
+
 
     def __init__(self, **kwargs):
         self.py_comparator = BytewiseComparator()
@@ -1018,13 +1029,15 @@ cdef class WriteBatch(object):
     cdef db.WriteBatch* batch
 
     def __cinit__(self, data=None):
+        self.batch = NULL
         if data is not None:
             self.batch = new db.WriteBatch(bytes_to_string(data))
         else:
             self.batch = new db.WriteBatch()
 
     def __dealloc__(self):
-        del self.batch
+        if not self.batch == NULL:
+            del self.batch
 
     def put(self, key, value):
         self.batch.Put(bytes_to_slice(key), bytes_to_slice(value))
@@ -1050,8 +1063,12 @@ cdef class DB(object):
 
     def __cinit__(self, db_name, Options opts, read_only=False):
         cdef Status st
-        cdef string db_path = path_to_string(db_name)
+        cdef string db_path
+        self.db = NULL
 
+
+
+        db_path = path_to_string(db_name)
         if read_only:
             with nogil:
                 st = db.DB_OpenForReadOnly(
@@ -1070,7 +1087,8 @@ cdef class DB(object):
         self.opts = opts
 
     def __dealloc__(self):
-        del self.db
+        if not self.db == NULL:
+            del self.db
 
     def put(self, key, value, sync=False, disable_wal=False):
         cdef Status st
@@ -1317,12 +1335,14 @@ cdef class Snapshot(object):
 
     def __cinit__(self, DB db):
         self.db = db
+        self.ptr = NULL
         with nogil:
             self.ptr = db.db.GetSnapshot()
 
     def __dealloc__(self):
-        with nogil:
-            self.db.db.ReleaseSnapshot(self.ptr)
+        if not self.ptr == NULL:
+            with nogil:
+                self.db.db.ReleaseSnapshot(self.ptr)
 
 
 @cython.internal
@@ -1338,7 +1358,7 @@ cdef class BaseIterator(object):
         self.ptr = NULL
 
     def __dealloc__(self):
-        if self.ptr != NULL:
+        if not self.ptr == NULL:
             del self.ptr
 
     def __iter__(self):
