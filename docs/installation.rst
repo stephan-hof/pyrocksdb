@@ -33,5 +33,5 @@ Building pyrocksdb
     $ virtualenv pyrocks_test
     $ cd pyrocks_test
     $ . bin/active
-    $ pip install Cython
+    $ pip install "Cython>=0.20"
     $ pip install git+git://github.com/stephan-hof/pyrocksdb.git

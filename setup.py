@@ -29,7 +29,7 @@ setup(
     name="pyrocksdb",
     install_requires=[
         'setuptools',
-        'Cython',
+        'Cython>=0.20',
     ],
     package_dir={'rocksdb': 'rocksdb'},
     packages=find_packages('.'),
