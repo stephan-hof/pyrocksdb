@@ -1095,7 +1095,9 @@ cdef class DB(object):
 
     def __dealloc__(self):
         if not self.db == NULL:
-            del self.db
+            with nogil:
+                del self.db
+
         if self.opts is not None:
             self.opts.in_use = False
 
