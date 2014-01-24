@@ -109,9 +109,12 @@ cdef class PyComparator(object):
     cdef const comparator.Comparator* get_comparator(self):
         return NULL
 
+    cdef set_info_log(self, shared_ptr[logger.Logger] info_log):
+        pass
+
 @cython.internal
 cdef class PyGenericComparator(PyComparator):
-    cdef const comparator.Comparator* comparator_ptr
+    cdef comparator.ComparatorWrapper* comparator_ptr
     cdef object ob
 
     def __cinit__(self, object ob):
@@ -121,11 +124,10 @@ cdef class PyGenericComparator(PyComparator):
             raise TypeError("Cannot set comparator: %s" % ob)
 
         self.ob = ob
-        self.comparator_ptr = <comparator.Comparator*>(
-            new comparator.ComparatorWrapper(
+        self.comparator_ptr = new comparator.ComparatorWrapper(
                 bytes_to_string(ob.name()),
                 <void*>ob,
-                compare_callback))
+                compare_callback)
 
     def __dealloc__(self):
         if not self.comparator_ptr == NULL:
@@ -135,7 +137,10 @@ cdef class PyGenericComparator(PyComparator):
         return self.ob
 
     cdef const comparator.Comparator* get_comparator(self):
-        return self.comparator_ptr
+        return <comparator.Comparator*> self.comparator_ptr
+
+    cdef set_info_log(self, shared_ptr[logger.Logger] info_log):
+        self.comparator_ptr.set_info_log(info_log)
 
 @cython.internal
 cdef class PyBytewiseComparator(PyComparator):
@@ -160,10 +165,17 @@ cdef class PyBytewiseComparator(PyComparator):
 
 cdef int compare_callback(
     void* ctx,
+    logger.Logger* log,
+    string& error_msg,
     const Slice& a,
     const Slice& b) with gil:
 
-    return (<object>ctx).compare(slice_to_bytes(a), slice_to_bytes(b))
+    try:
+        return (<object>ctx).compare(slice_to_bytes(a), slice_to_bytes(b))
+    except BaseException as error:
+        tb = traceback.format_exc()
+        logger.Log(log, "Error in compare callback: %s", <bytes>tb)
+        error_msg.assign(<bytes>str(error))
 
 BytewiseComparator = PyBytewiseComparator
 #########################################
@@ -1090,6 +1102,12 @@ cdef class DB(object):
                     cython.address(self.db))
 
         check_status(st)
+
+        # Inject the loggers into the python callbacks
+        cdef shared_ptr[logger.Logger] info_log = self.db.GetOptions().info_log
+        if opts.py_comparator is not None:
+            opts.py_comparator.set_info_log(info_log)
+
         self.opts = opts
         self.opts.in_use = True
 

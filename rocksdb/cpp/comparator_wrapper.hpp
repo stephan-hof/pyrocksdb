@@ -1,13 +1,21 @@
 #include "rocksdb/comparator.h"
+#include "rocksdb/env.h"
+#include <stdexcept>
 
 using std::string;
 using rocksdb::Comparator;
 using rocksdb::Slice;
+using rocksdb::Logger;
 
 namespace py_rocks {
     class ComparatorWrapper: public Comparator {
         public:
-            typedef int (*compare_func)(void*, const Slice&, const Slice&);
+            typedef int (*compare_func)(
+                void*,
+                Logger*,
+                string&,
+                const Slice&,
+                const Slice&);
 
             ComparatorWrapper(
                 string name,
@@ -19,7 +27,20 @@ namespace py_rocks {
             {}
 
             int Compare(const Slice& a, const Slice& b) const {
-                return this->compare_callback(this->compare_context, a, b);
+                string error_msg;
+                int val;
+
+                val = this->compare_callback(
+                    this->compare_context,
+                    this->info_log.get(),
+                    error_msg,
+                    a,
+                    b);
+
+                if (error_msg.size()) {
+                    throw std::runtime_error(error_msg.c_str());
+                }
+                return val;
             }
 
             const char* Name() const {
@@ -29,9 +50,14 @@ namespace py_rocks {
             void FindShortestSeparator(string* start, const Slice& limit) const {}
             void FindShortSuccessor(string* key) const {}
 
+            void set_info_log(std::shared_ptr<Logger> info_log) {
+                this->info_log = info_log;
+            }
+
         private:
             string name;
             void* compare_context;
             compare_func compare_callback;
+            std::shared_ptr<Logger> info_log;
     };
 }
