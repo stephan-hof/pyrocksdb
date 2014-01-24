@@ -101,6 +101,7 @@ cdef extern from "rocksdb/db.h" namespace "rocksdb":
         int MaxMemCompactionLevel() nogil except+
         int Level0StopWriteTrigger() nogil except+
         const string& GetName() nogil except+
+        const options.Options& GetOptions() nogil except+
         Status Flush(const options.FlushOptions&) nogil except+
         Status DisableFileDeletions() nogil except+
         Status EnableFileDeletions() nogil except+

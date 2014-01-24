@@ -33,7 +33,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         cpp_bool error_if_exists
         cpp_bool paranoid_checks
         # TODO: env
-        # TODO: info_log
+        shared_ptr[Logger] info_log
         size_t write_buffer_size
         int max_write_buffer_number
         int min_write_buffer_number_to_merge
