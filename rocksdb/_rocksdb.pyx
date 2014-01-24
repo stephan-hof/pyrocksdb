@@ -206,7 +206,6 @@ cdef class PyGenericFilterPolicy(PyFilterPolicy):
         self.policy = <filter_policy.FilterPolicy*> new filter_policy.FilterPolicyWrapper(
                 bytes_to_string(ob.name()),
                 <void*>ob,
-                <void*>ob,
                 create_filter_callback,
                 key_may_match_callback)
 

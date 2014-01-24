@@ -19,6 +19,5 @@ cdef extern from "cpp/filter_policy_wrapper.hpp" namespace "py_rocks":
         FilterPolicyWrapper(
             string,
             void*,
-            void*,
             create_filter_func,
             key_may_match_func) nogil except+

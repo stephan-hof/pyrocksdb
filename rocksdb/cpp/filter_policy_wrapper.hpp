@@ -20,13 +20,11 @@ namespace py_rocks {
 
             FilterPolicyWrapper(
                 string name,
-                void* create_filter_context,
-                void* key_may_match_context,
+                void* ctx,
                 create_filter_func create_filter_callback,
                 key_may_match_func key_may_match_callback):
                     name(name),
-                    create_filter_context(create_filter_context),
-                    key_may_match_context(key_may_match_context),
+                    ctx(ctx),
                     create_filter_callback(create_filter_callback),
                     key_may_match_callback(key_may_match_callback)
             {}
@@ -34,7 +32,7 @@ namespace py_rocks {
             void
             CreateFilter(const Slice* keys, int n, std::string* dst) const {
                 this->create_filter_callback(
-                    this->create_filter_context,
+                    this->ctx,
                     keys,
                     n,
                     dst);
@@ -43,7 +41,7 @@ namespace py_rocks {
             bool
             KeyMayMatch(const Slice& key, const Slice& filter) const {
                 return this->key_may_match_callback(
-                    this->key_may_match_context,
+                    this->ctx,
                     key,
                     filter);
             }
@@ -54,8 +52,7 @@ namespace py_rocks {
 
         private:
             string name;
-            void* create_filter_context;
-            void* key_may_match_context;
+            void* ctx;
             create_filter_func create_filter_callback;
             key_may_match_func key_may_match_callback;
     };
