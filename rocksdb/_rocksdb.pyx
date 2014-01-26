@@ -120,8 +120,7 @@ cdef class PyGenericComparator(PyComparator):
     def __cinit__(self, object ob):
         self.comparator_ptr = NULL
         if not isinstance(ob, IComparator):
-            # TODO: raise wrong subclass error
-            raise TypeError("Cannot set comparator: %s" % ob)
+            raise TypeError("%s is not of type %s" % (ob, IComparator))
 
         self.ob = ob
         self.comparator_ptr = new comparator.ComparatorWrapper(
@@ -202,7 +201,7 @@ cdef class PyGenericFilterPolicy(PyFilterPolicy):
     def __cinit__(self, object ob):
         self.policy = NULL
         if not isinstance(ob, IFilterPolicy):
-            raise TypeError("Cannot set filter policy: %s" % ob)
+            raise TypeError("%s is not of type %s" % (ob, IFilterPolicy))
 
         self.ob = ob
         self.policy = new filter_policy.FilterPolicyWrapper(
@@ -330,7 +329,9 @@ cdef class PyMergeOperator(object):
                         full_merge_callback,
                         partial_merge_callback))
         else:
-            raise TypeError("Cannot set MergeOperator: %s" % ob)
+            msg = "%s is not of this types %s"
+            msg %= (ob, (IAssociativeMergeOperator, IMergeOperator))
+            raise TypeError(msg)
 
     cdef object get_ob(self):
         return self.ob
@@ -1109,7 +1110,6 @@ cdef class DB(object):
         self.db = NULL
         self.opts = None
 
-
         if opts.in_use:
             raise Exception("Options object is already used by another DB")
 
@@ -1127,7 +1127,6 @@ cdef class DB(object):
                     deref(opts.opts),
                     db_path,
                     cython.address(self.db))
-
         check_status(st)
 
         # Inject the loggers into the python callbacks
