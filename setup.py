@@ -13,9 +13,10 @@ extension_defaults = {
     ],
     'language': 'c++',
     'libraries': [
+        'rocksdb',
+        'snappy',
         'bz2',
-        'z',
-        'rocksdb'
+        'z'
     ]
 }
 
