@@ -302,19 +302,19 @@ class TestPrefixExtractor(unittest.TestCase, TestHelper):
 
     def test_prefix(self):
         for x in range(3000):
-            keyx = b'%s.x' % hex(x)[2:].zfill(5).encode('utf8')
-            keyy = b'%s.y' % hex(x)[2:].zfill(5).encode('utf8')
-            keyz = b'%s.z' % hex(x)[2:].zfill(5).encode('utf8')
+            keyx = hex(x)[2:].zfill(5).encode('utf8') + b'.x'
+            keyy = hex(x)[2:].zfill(5).encode('utf8') + b'.y'
+            keyz = hex(x)[2:].zfill(5).encode('utf8') + b'.z'
             self.db.put(keyx, b'x')
             self.db.put(keyy, b'y')
             self.db.put(keyz, b'z')
 
-        self.assertEqual('x', self.db.get(b'00001.x'))
-        self.assertEqual('y', self.db.get(b'00001.y'))
-        self.assertEqual('z', self.db.get(b'00001.z'))
+        self.assertEqual(b'x', self.db.get(b'00001.x'))
+        self.assertEqual(b'y', self.db.get(b'00001.y'))
+        self.assertEqual(b'z', self.db.get(b'00001.z'))
 
         it = self.db.iterkeys(prefix=b'00002')
         it.seek(b'00002')
 
-        ref = ['00002.x', '00002.y', '00002.z']
+        ref = [b'00002.x', b'00002.y', b'00002.z']
         self.assertEqual(ref, list(it))
