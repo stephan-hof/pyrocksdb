@@ -191,10 +191,12 @@ cdef class PyFilterPolicy(object):
     cdef const filter_policy.FilterPolicy* get_policy(self):
         return NULL
 
+    cdef set_info_log(self, shared_ptr[logger.Logger] info_log):
+        pass
 
 @cython.internal
 cdef class PyGenericFilterPolicy(PyFilterPolicy):
-    cdef filter_policy.FilterPolicy* policy
+    cdef filter_policy.FilterPolicyWrapper* policy
     cdef object ob
 
     def __cinit__(self, object ob):
@@ -203,7 +205,7 @@ cdef class PyGenericFilterPolicy(PyFilterPolicy):
             raise TypeError("Cannot set filter policy: %s" % ob)
 
         self.ob = ob
-        self.policy = <filter_policy.FilterPolicy*> new filter_policy.FilterPolicyWrapper(
+        self.policy = new filter_policy.FilterPolicyWrapper(
                 bytes_to_string(ob.name()),
                 <void*>ob,
                 create_filter_callback,
@@ -217,26 +219,44 @@ cdef class PyGenericFilterPolicy(PyFilterPolicy):
         return self.ob
 
     cdef const filter_policy.FilterPolicy* get_policy(self):
-        return self.policy
+        return <filter_policy.FilterPolicy*> self.policy
+
+    cdef set_info_log(self, shared_ptr[logger.Logger] info_log):
+        self.policy.set_info_log(info_log)
+
 
 cdef void create_filter_callback(
     void* ctx,
+    logger.Logger* log,
+    string& error_msg,
     const Slice* keys,
     int n,
     string* dst) with gil:
 
-    ret = (<object>ctx).create_filter(
-        [slice_to_bytes(keys[i]) for i in range(n)])
-    dst.append(bytes_to_string(ret))
+    try:
+        ret = (<object>ctx).create_filter(
+            [slice_to_bytes(keys[i]) for i in range(n)])
+        dst.append(bytes_to_string(ret))
+    except BaseException as error:
+        tb = traceback.format_exc()
+        logger.Log(log, "Error in create filter callback: %s", <bytes>tb)
+        error_msg.assign(<bytes>str(error))
 
 cdef cpp_bool key_may_match_callback(
     void* ctx,
+    logger.Logger* log,
+    string& error_msg,
     const Slice& key,
     const Slice& filt) with gil:
 
-    return (<object>ctx).key_may_match(
-        slice_to_bytes(key),
-        slice_to_bytes(filt))
+    try:
+        return (<object>ctx).key_may_match(
+            slice_to_bytes(key),
+            slice_to_bytes(filt))
+    except BaseException as error:
+        tb = traceback.format_exc()
+        logger.Log(log, "Error in key_mach_match callback: %s", <bytes>tb)
+        error_msg.assign(<bytes>str(error))
 
 @cython.internal
 cdef class PyBloomFilterPolicy(PyFilterPolicy):
@@ -1106,6 +1126,9 @@ cdef class DB(object):
         cdef shared_ptr[logger.Logger] info_log = self.db.GetOptions().info_log
         if opts.py_comparator is not None:
             opts.py_comparator.set_info_log(info_log)
+
+        if opts.py_filter_policy is not None:
+            opts.py_filter_policy.set_info_log(info_log)
 
         self.opts = opts
         self.opts.in_use = True
