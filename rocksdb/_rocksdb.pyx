@@ -362,12 +362,9 @@ cdef cpp_bool merge_callback(
             return True
         return False
 
-    except Exception:
+    except:
         tb = traceback.format_exc()
-        logger.Log(
-            log,
-            "Error in merge_callback: %s",
-            <bytes>tb)
+        logger.Log(log, "Error in merge_callback: %s", <bytes>tb)
         return False
 
 cdef cpp_bool full_merge_callback(
@@ -394,12 +391,9 @@ cdef cpp_bool full_merge_callback(
             return True
         return False
 
-    except Exception:
+    except:
         tb = traceback.format_exc()
-        logger.Log(
-            log,
-            "Error in full_merge_callback: %s",
-            <bytes>tb)
+        logger.Log(log, "Error in full_merge_callback: %s", <bytes>tb)
         return False
 
 cdef cpp_bool partial_merge_callback(
@@ -421,13 +415,9 @@ cdef cpp_bool partial_merge_callback(
             return True
         return False
 
-    except Exception:
+    except:
         tb = traceback.format_exc()
-        logger.Log(
-            log,
-            "Error in partial_merge_callback: %s",
-            <bytes>tb)
-
+        logger.Log(log, "Error in partial_merge_callback: %s", <bytes>tb)
         return False
 ##############################################
 
