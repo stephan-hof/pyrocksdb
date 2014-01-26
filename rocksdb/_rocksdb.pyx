@@ -458,7 +458,7 @@ LRUCache = PyLRUCache
 ### Here comes the stuff for SliceTransform
 @cython.internal
 cdef class PySliceTransform(object):
-    cdef slice_transform.SliceTransform* transfomer
+    cdef slice_transform.SliceTransformWrapper* transfomer
     cdef object ob
 
     def __cinit__(self, object ob):
@@ -467,13 +467,12 @@ cdef class PySliceTransform(object):
             raise TypeError("%s is not of type %s" % (ob, ISliceTransform))
 
         self.ob = ob
-        self.transfomer = <slice_transform.SliceTransform*>(
-            new slice_transform.SliceTransformWrapper(
+        self.transfomer = new slice_transform.SliceTransformWrapper(
                 bytes_to_string(ob.name()),
                 <void*>ob,
                 slice_transform_callback,
                 slice_in_domain_callback,
-                slice_in_range_callback))
+                slice_in_range_callback)
 
     def __dealloc__(self):
         if not self.transfomer == NULL:
@@ -483,9 +482,18 @@ cdef class PySliceTransform(object):
         return self.ob
 
     cdef slice_transform.SliceTransform* get_transformer(self):
-        return self.transfomer
+        return <slice_transform.SliceTransform*> self.transfomer
 
-cdef Slice slice_transform_callback(void* ctx, const Slice& src) with gil:
+    cdef set_info_log(self, shared_ptr[logger.Logger] info_log):
+        self.transfomer.set_info_log(info_log)
+
+
+cdef Slice slice_transform_callback(
+    void* ctx,
+    logger.Logger* log,
+    string& error_msg,
+    const Slice& src) with gil:
+
     cdef size_t offset
     cdef size_t size
 
@@ -498,26 +506,36 @@ cdef Slice slice_transform_callback(void* ctx, const Slice& src) with gil:
             raise Exception(msg  % (offset, size, src.size()))
 
         return Slice(src.data() + offset, size)
-    except Exception as error:
-        print error
-        # TODO: Use the rocksdb logger
-        return src
+    except BaseException as error:
+        tb = traceback.format_exc()
+        logger.Log(log, "Error in slice transfrom callback: %s", <bytes>tb)
+        error_msg.assign(<bytes>str(error))
 
-cdef cpp_bool slice_in_domain_callback(void* ctx, const Slice& src) with gil:
+cdef cpp_bool slice_in_domain_callback(
+    void* ctx,
+    logger.Logger* log,
+    string& error_msg,
+    const Slice& src) with gil:
+
     try:
         return (<object>ctx).in_domain(slice_to_bytes(src))
-    except Exception as error:
-        print error
-        # TODO: Use the rocksdb logger
-        return False
+    except BaseException as error:
+        tb = traceback.format_exc()
+        logger.Log(log, "Error in slice transfrom callback: %s", <bytes>tb)
+        error_msg.assign(<bytes>str(error))
 
-cdef cpp_bool slice_in_range_callback(void* ctx, const Slice& src) with gil:
+cdef cpp_bool slice_in_range_callback(
+    void* ctx,
+    logger.Logger* log,
+    string& error_msg,
+    const Slice& src) with gil:
+
     try:
         return (<object>ctx).in_range(slice_to_bytes(src))
-    except Exception as error:
-        print error
-        # TODO: Use rocksdb logger
-        return False
+    except BaseException as error:
+        tb = traceback.format_exc()
+        logger.Log(log, "Error in slice transfrom callback: %s", <bytes>tb)
+        error_msg.assign(<bytes>str(error))
 
 ###########################################
 cdef class CompressionType(object):
@@ -1119,6 +1137,9 @@ cdef class DB(object):
 
         if opts.py_filter_policy is not None:
             opts.py_filter_policy.set_info_log(info_log)
+
+        if opts.prefix_extractor is not None:
+            opts.py_prefix_extractor.set_info_log(info_log)
 
         self.opts = opts
         self.opts.in_use = True
