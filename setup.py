@@ -28,6 +28,13 @@ mod1 = Extension(
 
 setup(
     name="pyrocksdb",
+    version='0.1',
+    description="Python bindings for RocksDB",
+    keywords='rocksdb',
+    author='Stephan Hofmockel',
+    author_email="Use the github issues",
+    url="https://github.com/stephan-hof/pyrocksdb",
+    license='BSD License',
     install_requires=[
         'setuptools',
         'Cython>=0.20',
