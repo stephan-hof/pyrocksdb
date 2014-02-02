@@ -31,10 +31,7 @@ Feel free to fork and send pull-requests or create issues on the
 RoadMap/TODO
 ------------
 
-* wrap Backup/Restore https://github.com/facebook/rocksdb/wiki/How-to-backup-RocksDB%3F
-* wrap DestroyDB
-* wrap RepairDB
-* Links from tutorial to API pages (for example merge operator)
+No plans so far. Please submit wishes to the github issues.
 
 Indices and tables
 ==================
