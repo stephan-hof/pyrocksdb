@@ -3,6 +3,7 @@ from libcpp.string cimport string
 from libcpp.deque cimport deque
 from libcpp.vector cimport vector
 from libcpp cimport bool as cpp_bool
+from libc.stdint cimport uint32_t
 from cython.operator cimport dereference as deref
 from cpython.bytes cimport PyBytes_AsString
 from cpython.bytes cimport PyBytes_Size
@@ -21,6 +22,8 @@ cimport logger
 cimport snapshot
 cimport db
 cimport iterator
+cimport backup
+cimport env
 
 from slice_ cimport Slice
 from status cimport Status
@@ -1524,4 +1527,103 @@ cdef class ReversedIterator(object):
         with nogil:
             self.it.ptr.Prev()
         check_status(self.it.ptr.status())
+        return ret
+
+cdef class BackupEngine(object):
+    cdef backup.BackupEngine* engine
+
+    def  __cinit__(self, backup_dir):
+        cdef string c_backup_dir
+        self.engine = NULL
+
+        c_backup_dir = path_to_string(backup_dir)
+        self.engine = backup.NewBackupEngine(
+            env.Env_Default(),
+            backup.BackupableDBOptions(c_backup_dir))
+
+    def __dealloc__(self):
+        if not self.engine == NULL:
+            with nogil:
+                del self.engine
+
+    def create_backup(self, DB db, flush_before_backup=False):
+        cdef Status st
+        cdef cpp_bool c_flush_before_backup
+
+        c_flush_before_backup = flush_before_backup
+
+        with nogil:
+            st = self.engine.CreateNewBackup(db.db, c_flush_before_backup)
+        check_status(st)
+
+    def restore_backup(self, backup_id, db_dir, wal_dir):
+        cdef Status st
+        cdef backup.BackupID c_backup_id
+        cdef string c_db_dir
+        cdef string c_wal_dir
+
+        c_backup_id = backup_id
+        c_db_dir = path_to_string(db_dir)
+        c_wal_dir = path_to_string(wal_dir)
+
+        with nogil:
+            st = self.engine.RestoreDBFromBackup(
+                c_backup_id,
+                c_db_dir,
+                c_wal_dir)
+
+        check_status(st)
+
+    def restore_latest_backup(self, db_dir, wal_dir):
+        cdef Status st
+        cdef string c_db_dir
+        cdef string c_wal_dir
+
+        c_db_dir = path_to_string(db_dir)
+        c_wal_dir = path_to_string(wal_dir)
+
+        with nogil:
+            st = self.engine.RestoreDBFromLatestBackup(c_db_dir, c_wal_dir)
+
+        check_status(st)
+
+    def stop_backup(self):
+        with nogil:
+            self.engine.StopBackup()
+
+    def purge_old_backups(self, num_backups_to_keep):
+        cdef Status st
+        cdef uint32_t c_num_backups_to_keep
+
+        c_num_backups_to_keep = num_backups_to_keep
+
+        with nogil:
+            st = self.engine.PurgeOldBackups(c_num_backups_to_keep)
+        check_status(st)
+
+    def delete_backup(self, backup_id):
+        cdef Status st
+        cdef backup.BackupID c_backup_id
+
+        c_backup_id = backup_id
+
+        with nogil:
+            st = self.engine.DeleteBackup(c_backup_id)
+
+        check_status(st)
+
+    def get_backup_info(self):
+        cdef vector[backup.BackupInfo] backup_info
+
+        with nogil:
+            self.engine.GetBackupInfo(cython.address(backup_info))
+
+        ret = []
+        for ob in backup_info:
+            t = {}
+            t['backup_id'] = ob.backup_id
+            t['timestamp'] = ob.timestamp
+            t['size'] = ob.size
+            ret.append(t)
+
         return ret
