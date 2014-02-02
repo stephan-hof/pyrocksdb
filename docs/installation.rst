@@ -14,7 +14,7 @@ For more details consider https://github.com/facebook/rocksdb/blob/master/INSTAL
     $ git clone https://github.com/facebook/rocksdb.git
     $ cd rocksdb
     $ # It is tested with this version
-    $ git checkout ac2fe728327be75c8c289d4e3ebf8587d88c518d
+    $ git checkout 2.7.fb
     $ make librocksdb.so
 
 If you do not want to call ``make install`` export the following enviroment
