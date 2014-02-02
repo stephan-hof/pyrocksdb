@@ -241,3 +241,32 @@ So always the first 5 bytes are used as the prefix ::
 
     # prints {b'00002.z': b'z', b'00002.y': b'y', b'00002.x': b'x'}
     print dict(it)
+
+
+Backup And Restore
+==================
+
+Backup and Restore is done with a separate :py:class:`rocksdb.BackupEngine` object.
+
+A backup can only be created on a living database object ::
+
+   import rocksdb
+
+   db = rocksdb.DB("test.db", rocksdb.Options(create_if_missing=True))
+   db.put(b'a', b'v1')
+   db.put(b'b', b'v2')
+   db.put(b'c', b'v3')
+
+Backup is created like this.
+You can choose any path for the backup destination except the db path itself.
+If ``flush_before_backup`` is ``True`` the current memtable is flushed to disk
+before backup ::
+
+    backup = rocksdb.BackupEngine("test.db/backups")
+    backup.create_backup(db, flush_before_backup=True)
+
+Restore is done like this.
+The two arguments are the db_dir and wal_dir, which are mostly the same ::
+
+    backup = rocksdb.BackupEngine("test.db/backups")
+    backup.restore_latest_backup("test.db", "test.db")

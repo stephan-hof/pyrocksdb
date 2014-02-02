@@ -8,3 +8,4 @@ Python driver for RocksDB
     Options <options>
     Database <database>
     Interfaces <interfaces>
+    Backup <backup>
