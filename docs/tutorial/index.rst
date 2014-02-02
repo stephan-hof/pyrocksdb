@@ -248,7 +248,7 @@ Backup And Restore
 
 Backup and Restore is done with a separate :py:class:`rocksdb.BackupEngine` object.
 
-A backup can only be created on a living database object ::
+A backup can only be created on a living database object. ::
 
    import rocksdb
 
@@ -260,13 +260,13 @@ A backup can only be created on a living database object ::
 Backup is created like this.
 You can choose any path for the backup destination except the db path itself.
 If ``flush_before_backup`` is ``True`` the current memtable is flushed to disk
-before backup ::
+before backup. ::
 
     backup = rocksdb.BackupEngine("test.db/backups")
     backup.create_backup(db, flush_before_backup=True)
 
 Restore is done like this.
-The two arguments are the db_dir and wal_dir, which are mostly the same ::
+The two arguments are the db_dir and wal_dir, which are mostly the same. ::
 
     backup = rocksdb.BackupEngine("test.db/backups")
     backup.restore_latest_backup("test.db", "test.db")

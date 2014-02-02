@@ -54,7 +54,7 @@ BackupEngine
 
     .. py:method:: get_backup_info()
 
-        Returns infomration about all backups.
+        Returns information about all backups.
 
         It returns a list of dict's where each dict as the following keys.
 
