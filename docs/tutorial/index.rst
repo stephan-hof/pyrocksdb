@@ -165,8 +165,13 @@ MergeOperator
 =============
 
 Merge operators are useful for efficient read-modify-write operations.
+For more details see `Merge Operator <https://github.com/facebook/rocksdb/wiki/Merge-Operator>`_
 
-The simple Associative merge ::
+A python merge operator must either implement the
+:py:class:`rocksdb.interfaces.AssociativeMergeOperator` or
+:py:class:`rocksdb.interfaces.MergeOperator` interface.
+
+The following example python merge operator implements a counter ::
 
     class AssocCounter(rocksdb.interfaces.AssociativeMergeOperator):
         def merge(self, key, existing_value, value):
@@ -195,8 +200,10 @@ PrefixExtractor
 
 According to `Prefix API <https://github.com/facebook/rocksdb/wiki/Proposal-for-prefix-API>`_
 a prefix_extractor can reduce IO for scans within a prefix range.
-The following example presents a prefix extractor of a static size. So always
-the first 5 bytes are used as the prefix ::
+A python prefix extractor must implement the :py:class:`rocksdb.interfaces.SliceTransform` interface.
+
+The following example presents a prefix extractor of a static size.
+So always the first 5 bytes are used as the prefix ::
 
     class StaticPrefix(rocksdb.interfaces.SliceTransform):
         def name(self):
