@@ -45,7 +45,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         CompressionType compression
         # TODO: compression_per_level
         # TODO: compression_opts
-        SliceTransform* prefix_extractor
+        shared_ptr[SliceTransform] prefix_extractor
         cpp_bool whole_key_filtering
         int num_levels
         int level0_file_num_compaction_trigger

@@ -485,8 +485,8 @@ cdef class PySliceTransform(object):
     cdef object get_ob(self):
         return self.ob
 
-    cdef slice_transform.SliceTransform* get_transformer(self):
-        return <slice_transform.SliceTransform*> self.transfomer
+    cdef shared_ptr[slice_transform.SliceTransform] get_transformer(self):
+        return <shared_ptr[slice_transform.SliceTransform]> self.transfomer
 
     cdef set_info_log(self, shared_ptr[logger.Logger] info_log):
         self.transfomer.set_info_log(info_log)
