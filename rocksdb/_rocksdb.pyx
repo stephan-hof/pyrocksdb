@@ -462,34 +462,33 @@ LRUCache = PyLRUCache
 ### Here comes the stuff for SliceTransform
 @cython.internal
 cdef class PySliceTransform(object):
-    cdef slice_transform.SliceTransformWrapper* transfomer
+    cdef shared_ptr[slice_transform.SliceTransform] transfomer
     cdef object ob
 
     def __cinit__(self, object ob):
-        self.transfomer = NULL
         if not isinstance(ob, ISliceTransform):
             raise TypeError("%s is not of type %s" % (ob, ISliceTransform))
 
         self.ob = ob
-        self.transfomer = new slice_transform.SliceTransformWrapper(
-                bytes_to_string(ob.name()),
-                <void*>ob,
-                slice_transform_callback,
-                slice_in_domain_callback,
-                slice_in_range_callback)
-
-    def __dealloc__(self):
-        if not self.transfomer == NULL:
-            del self.transfomer
+        self.transfomer.reset(
+            <slice_transform.SliceTransform*>
+                new slice_transform.SliceTransformWrapper(
+                    bytes_to_string(ob.name()),
+                    <void*>ob,
+                    slice_transform_callback,
+                    slice_in_domain_callback,
+                    slice_in_range_callback))
 
     cdef object get_ob(self):
         return self.ob
 
-    cdef slice_transform.SliceTransform* get_transformer(self):
-        return <slice_transform.SliceTransform*> self.transfomer
+    cdef shared_ptr[slice_transform.SliceTransform] get_transformer(self):
+        return self.transfomer
 
     cdef set_info_log(self, shared_ptr[logger.Logger] info_log):
-        self.transfomer.set_info_log(info_log)
+        cdef slice_transform.SliceTransformWrapper* ptr
+        ptr = <slice_transform.SliceTransformWrapper*> self.transfomer.get()
+        ptr.set_info_log(info_log)
 
 
 cdef Slice slice_transform_callback(

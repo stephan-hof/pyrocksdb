@@ -13,8 +13,6 @@ For more details consider https://github.com/facebook/rocksdb/blob/master/INSTAL
     $ apt-get install libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
     $ git clone https://github.com/facebook/rocksdb.git
     $ cd rocksdb
-    $ # It is tested with this version
-    $ git checkout 2.7.fb
     $ make librocksdb.so
 
 If you do not want to call ``make install`` export the following enviroment
@@ -34,4 +32,4 @@ Building pyrocksdb
     $ cd pyrocks_test
     $ . bin/active
     $ pip install "Cython>=0.20"
-    $ pip install git+git://github.com/stephan-hof/pyrocksdb.git@v0.1
+    $ pip install git+git://github.com/stephan-hof/pyrocksdb.git
