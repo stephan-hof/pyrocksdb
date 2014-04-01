@@ -24,9 +24,9 @@ class TestMergeOperator(rocksdb.interfaces.MergeOperator):
 class TestOptions(unittest.TestCase):
     def test_simple(self):
         opts = rocksdb.Options()
-        self.assertEqual(False, opts.paranoid_checks)
-        opts.paranoid_checks = True
         self.assertEqual(True, opts.paranoid_checks)
+        opts.paranoid_checks = False
+        self.assertEqual(False, opts.paranoid_checks)
 
         self.assertIsNone(opts.filter_policy)
         ob = TestFilterPolicy()

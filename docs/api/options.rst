@@ -59,7 +59,7 @@ Options object
         Write operations.
 
         | *Type:* ``bool``
-        | *Default:* ``False``
+        | *Default:* ``True``
 
     .. py:attribute:: write_buffer_size
 
@@ -100,11 +100,14 @@ Options object
     .. py:attribute:: max_open_files
 
         Number of open files that can be used by the DB.  You may need to
-        increase this if your database has a large working set (budget
-        one open file per 2MB of working set).
+        increase this if your database has a large working set. Value -1 means
+        files opened are always kept open. You can estimate number of
+        files based on target_file_size_base and target_file_size_multiplier
+        for level-based compaction.
+        For universal-style compaction, you can usually set it to -1.
 
         | *Type:* ``int``
-        | *Default:* ``1000``
+        | *Default:* ``5000``
 
     .. py:attribute:: block_cache
 
@@ -384,7 +387,7 @@ Options object
         unnecessary Put stalls.
 
         | *Type:* ``int``
-        | *Default:* ``0``
+        | *Default:* ``1``
 
     .. py:attribute:: max_log_file_size
 
@@ -545,7 +548,7 @@ Options object
         Allow the OS to mmap file for reading sst tables
 
         | *Type:* ``bool``
-        | *Default:* ``False``
+        | *Default:* ``True``
 
     .. py:attribute:: allow_mmap_writes
 
