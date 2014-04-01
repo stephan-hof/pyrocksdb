@@ -47,8 +47,8 @@ namespace py_rocks {
                 return this->name.c_str();
             }
 
-            virtual void FindShortestSeparator(string* start, const Slice& limit) const {}
-            virtual void FindShortSuccessor(string* key) const {}
+            virtual void FindShortestSeparator(string*, const Slice&) const {}
+            virtual void FindShortSuccessor(string*) const {}
 
             void set_info_log(std::shared_ptr<Logger> info_log) {
                 this->info_log = info_log;
