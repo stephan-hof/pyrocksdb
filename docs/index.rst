@@ -19,6 +19,7 @@ Tested with python2.7 and python3.3 and RocksDB version 2.7.fb
     Instructions how to install <installation>
     Tutorial <tutorial/index>
     API <api/index>
+    Changelog <changelog>
 
 
 Contributing
