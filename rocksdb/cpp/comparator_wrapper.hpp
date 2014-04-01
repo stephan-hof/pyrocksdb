@@ -26,7 +26,7 @@ namespace py_rocks {
                     compare_callback(compare_callback)
             {}
 
-            int Compare(const Slice& a, const Slice& b) const {
+            virtual int Compare(const Slice& a, const Slice& b) const {
                 string error_msg;
                 int val;
 
@@ -43,12 +43,12 @@ namespace py_rocks {
                 return val;
             }
 
-            const char* Name() const {
+            virtual const char* Name() const {
                 return this->name.c_str();
             }
 
-            void FindShortestSeparator(string* start, const Slice& limit) const {}
-            void FindShortSuccessor(string* key) const {}
+            virtual void FindShortestSeparator(string* start, const Slice& limit) const {}
+            virtual void FindShortSuccessor(string* key) const {}
 
             void set_info_log(std::shared_ptr<Logger> info_log) {
                 this->info_log = info_log;

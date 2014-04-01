@@ -42,11 +42,11 @@ namespace py_rocks {
                     in_range_callback(in_range_callback)
             {}
 
-            const char* Name() const {
+            virtual const char* Name() const {
                 return this->name.c_str();
             }
 
-            Slice Transform(const Slice& src) const {
+            virtual Slice Transform(const Slice& src) const {
                 string error_msg;
                 Slice val;
 
@@ -62,7 +62,7 @@ namespace py_rocks {
                 return val;
             }
 
-            bool InDomain(const Slice& src) const {
+            virtual bool InDomain(const Slice& src) const {
                 string error_msg;
                 bool val;
 
@@ -78,7 +78,7 @@ namespace py_rocks {
                 return val;
             }
 
-            bool InRange(const Slice& dst) const {
+            virtual bool InRange(const Slice& dst) const {
                 string error_msg;
                 bool val;
 

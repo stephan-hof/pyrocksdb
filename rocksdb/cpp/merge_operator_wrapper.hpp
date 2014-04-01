@@ -28,7 +28,7 @@ namespace py_rocks {
                     merge_callback(merge_callback)
             {}
 
-            bool Merge(
+            virtual bool Merge(
                 const Slice& key,
                 const Slice* existing_value,
                 const Slice& value,
@@ -44,7 +44,7 @@ namespace py_rocks {
                     logger);
             }
 
-            const char* Name() const {
+            virtual const char* Name() const {
                 return this->name.c_str();
             }
 
@@ -85,7 +85,7 @@ namespace py_rocks {
                     partial_merge_callback(partial_merge_callback)
             {}
 
-            bool FullMerge(
+            virtual bool FullMerge(
                 const Slice& key,
                 const Slice* existing_value,
                 const deque<string>& operand_list,
@@ -101,7 +101,7 @@ namespace py_rocks {
                     logger);
             }
 
-            bool PartialMerge (
+            virtual bool PartialMerge (
                 const Slice& key,
                 const Slice& left_operand,
                 const Slice& right_operand,
@@ -117,7 +117,7 @@ namespace py_rocks {
                     logger);
             }
             
-            const char* Name() const {
+            virtual const char* Name() const {
                 return this->name.c_str();
             }
 

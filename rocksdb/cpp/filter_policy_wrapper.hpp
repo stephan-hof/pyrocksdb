@@ -36,7 +36,7 @@ namespace py_rocks {
                     key_may_match_callback(key_may_match_callback)
             {}
 
-            void
+            virtual void
             CreateFilter(const Slice* keys, int n, std::string* dst) const {
                 string error_msg;
 
@@ -53,7 +53,7 @@ namespace py_rocks {
                 }
             }
 
-            bool
+            virtual bool
             KeyMayMatch(const Slice& key, const Slice& filter) const {
                 string error_msg;
                 bool val;
@@ -71,7 +71,7 @@ namespace py_rocks {
                 return val;
             }
 
-            const char* Name() const {
+            virtual const char* Name() const {
                 return this->name.c_str();
             }
 
