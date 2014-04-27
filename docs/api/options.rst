@@ -188,14 +188,14 @@ Options object
         number of files in level-0.
 
         | *Type:* ``int``
-        | *Default:* ``8``
+        | *Default:* ``20``
 
     .. py:attribute:: level0_stop_writes_trigger
 
         Maximum number of level-0 files.  We stop writes at this point.
 
         | *Type:* ``int``
-        | *Default:* ``12``
+        | *Default:* ``24``
 
     .. py:attribute:: max_mem_compaction_level
 
@@ -354,7 +354,7 @@ Options object
         (which is true if max_open_files is large).
 
         | *Type:* ``bool``
-        | *Default:* ``False``
+        | *Default:* ``True``
 
     .. py:attribute:: delete_obsolete_files_period_micros
 
@@ -555,7 +555,7 @@ Options object
         Allow the OS to mmap file for writing
 
         | *Type:* ``bool``
-        | *Default:* ``True``
+        | *Default:* ``False``
 
     .. py:attribute:: is_fd_close_on_exec
 
