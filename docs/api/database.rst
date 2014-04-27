@@ -211,6 +211,16 @@ Database object
         * ``b"rocksdb.sstables"``: returns a multi-line byte string that describes all
             of the sstables that make up the db contents.
 
+        * ``b"rocksdb.num-immutable-mem-table"``: Number of immutable mem tables.
+
+        * ``b"rocksdb.mem-table-flush-pending"``: Returns ``1`` if mem table flush is pending, otherwise ``0``.
+
+        * ``b"rocksdb.compaction-pending"``:  Returns ``1`` if a compaction is pending, otherweise ``0``.
+
+        * ``b"rocksdb.background-errors"``: Returns accumulated background errors encountered.
+
+        * ``b"rocksdb.cur-size-active-mem-table"``: Returns current size of the active memtable.
+
     .. py:method:: get_live_files_metadata()
 
         Returns a list of all table files.
