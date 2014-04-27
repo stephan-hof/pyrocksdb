@@ -24,6 +24,7 @@ cimport db
 cimport iterator
 cimport backup
 cimport env
+cimport table_factory
 
 from slice_ cimport Slice
 from status cimport Status
@@ -539,8 +540,49 @@ cdef cpp_bool slice_in_range_callback(
         tb = traceback.format_exc()
         logger.Log(log, "Error in slice transfrom callback: %s", <bytes>tb)
         error_msg.assign(<bytes>str(error))
-
 ###########################################
+
+## Here are the TableFactories
+@cython.internal
+cdef class PyTableFactory(object):
+    cdef shared_ptr[table_factory.TableFactory] factory
+
+    cdef shared_ptr[table_factory.TableFactory] get_table_factory(self):
+        return self.factory
+
+cdef class BlockBasedTableFactory(PyTableFactory):
+    def __init__(self):
+        self.factory.reset(table_factory.NewBlockBasedTableFactory())
+
+cdef class PlainTableFactory(PyTableFactory):
+    def __init__(
+            self,
+            user_key_len=0,
+            bloom_bits_per_prefix=10,
+            hash_table_ratio=0.75,
+            index_sparseness=10):
+
+        self.factory.reset(
+            table_factory.NewPlainTableFactory(
+                user_key_len,
+                bloom_bits_per_prefix,
+                hash_table_ratio,
+                index_sparseness))
+
+cdef class TotalOrderPlainTableFactory(PyTableFactory):
+    def __init__(
+            self,
+            user_key_len=0,
+            bloom_bits_per_key=0,
+            index_sparseness=16):
+
+        self.factory.reset(
+            table_factory.NewTotalOrderPlainTableFactory(
+                user_key_len,
+                bloom_bits_per_key,
+                index_sparseness))
+
+#############################################
 cdef class CompressionType(object):
     no_compression = u'no_compression'
     snappy_compression = u'snappy_compression'
@@ -555,6 +597,7 @@ cdef class Options(object):
     cdef PyCache py_block_cache
     cdef PyCache py_block_cache_compressed
     cdef PySliceTransform py_prefix_extractor
+    cdef PyTableFactory py_table_factory
     # Used to protect sharing of Options with many DB-objects
     cdef cpp_bool in_use
 
@@ -574,6 +617,7 @@ cdef class Options(object):
         self.py_block_cache = None
         self.py_block_cache_compressed = None
         self.py_prefix_extractor = None
+        self.py_table_factory = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -974,6 +1018,13 @@ cdef class Options(object):
             return self.opts.inplace_update_support
         def __set__(self, value):
             self.opts.inplace_update_support = value
+
+    property table_factory:
+        def __get__(self):
+            return self.py_table_factory
+
+        def __set__(self, PyTableFactory value):
+            self.opts.table_factory = value.get_table_factory()
 
     property inplace_update_num_locks:
         def __get__(self):

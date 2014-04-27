@@ -61,3 +61,11 @@ class TestOptions(unittest.TestCase):
 
         self.assertEqual(name, opts.db_log_dir)
         self.assertEqual(name, opts.wal_dir)
+
+    def test_table_factory(self):
+        opts = rocksdb.Options()
+        self.assertIsNone(opts.table_factory)
+
+        opts.table_factory = rocksdb.BlockBasedTableFactory()
+        opts.table_factory = rocksdb.PlainTableFactory()
+        opts.table_factory = rocksdb.TotalOrderPlainTableFactory()

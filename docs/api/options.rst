@@ -645,6 +645,18 @@ Options object
         | *Type:* ``int``
         | *Default:* ``8``
 
+    .. py:attribute:: table_factory
+
+        Factory for the files forming the persisten data storage.
+        Sometimes they are also named SST-Files. Right now you can assign
+        instances of the following classes
+
+        * :py:class:`rocksdb.BlockBasedTableFactory`
+        * :py:class:`rocksdb.PlainTableFactory`
+        * :py:class:`rocksdb.TotalOrderPlainTableFactory`
+
+        *Default:* :py:class:`rocksdb.BlockBasedTableFactory`
+
     .. py:attribute:: inplace_update_support
 
         Allows thread-safe inplace updates. Requires Updates if
@@ -779,3 +791,69 @@ LRUCache
         the least-used order. If not enough space is freed, further free the
         entries in least used order.
 
+TableFactories
+==============
+
+Currently RocksDB supports two types of tables: plain table and block-based table.
+Instances of this classes can assigned to :py:attr:`rocksdb.Options.table_factory`
+
+* *Block-based table:* This is the default table type that RocksDB inherited from
+  LevelDB. It was designed for storing data in hard disk or flash device.
+
+* *Plain table:* It is one of RocksDB's SST file format optimized
+  for low query latency on pure-memory or really low-latency media.
+
+Tutorial of rocksdb table formats is available here:
+ https://github.com/facebook/rocksdb/wiki/A-Tutorial-of-RocksDB-SST-formats
+
+.. py:class:: rocksdb.BlockBasedTableFactory
+
+    Wraps BlockBasedTableFactory of RocksDB.
+
+.. py:class:: rocksdb.PlainTableFactory
+
+    Plain Table with prefix-only seek. It wraps rocksdb PlainTableFactory.
+
+    For this factory, you need to set :py:attr:`rocksdb.Options.prefix_extractor`
+    properly to make it work. Look-up will start with prefix hash lookup for
+    key prefix. Inside the hash bucket found, a binary search is executed for
+    hash conflicts. Finally, a linear search is used.
+
+    .. py:method:: __init__(user_key_len=0, bloom_bits_per_prefix=10, hash_table_ratio=0.75, index_sparseness=10)
+
+        :param int user_key_len:
+            Plain table has optimization for fix-sized keys, which can be
+            specified via user_key_len.
+            Alternatively, you can pass `0` if your keys have variable lengths.
+
+        :param int bloom_bits_per_key:
+            The number of bits used for bloom filer per prefix.
+            You may disable it by passing `0`.
+
+        :param float hash_table_ratio:
+            The desired utilization of the hash table used for prefix hashing.
+            hash_table_ratio = number of prefixes / #buckets in the hash table.
+
+        :param int index_sparseness:
+            Inside each prefix, need to build one index record for how
+            many keys for binary search inside each hash bucket.
+
+.. py:class:: rocksdb.TotalOrderPlainTableFactory
+
+    This factory of plain table ignores Options.prefix_extractor and assumes no
+    hashable prefix available to the key structure. Lookup will be based on
+    binary search index only. Total order seek() can be issued.
+
+    .. py:method:: __init__(user_key_len=0, bloom_bits_per_key=0, index_sparseness=16)
+
+        :param int user_key_len:
+            Plain table has optimization for fix-sized keys, which can be
+            specified via user_key_len.
+            Alternatively, you can pass `0` if your keys have variable lengths.
+
+        :param int bloom_bits_per_key:
+            The number of bits used for bloom filer per key.
+            You may disable it by passing a zero.
+
+        :param int index_sparseness:
+            Need to build one index record for how many keys for binary search.
