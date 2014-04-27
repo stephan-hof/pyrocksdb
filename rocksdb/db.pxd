@@ -17,8 +17,8 @@ cdef extern from "rocksdb/write_batch.h" namespace "rocksdb":
         void Delete(const Slice&) nogil except+
         void PutLogData(const Slice&) nogil except+
         void Clear() nogil except+
-        string Data() nogil except+
-        int Count() nogil const
+        const string& Data() nogil except+
+        int Count() nogil except+
 
 cdef extern from "rocksdb/db.h" namespace "rocksdb":
     ctypedef uint64_t SequenceNumber

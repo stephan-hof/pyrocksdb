@@ -28,7 +28,6 @@ cdef extern from "utilities/backupable_db.h" namespace "rocksdb":
         void GetBackupInfo(vector[BackupInfo]*) nogil except+
         Status RestoreDBFromBackup(BackupID, string&, string&) nogil except+
         Status RestoreDBFromLatestBackup(string&, string&) nogil except+
-        void DeleteBackupsNewerThan(uint64_t) nogil except+
 
     cdef BackupEngine* NewBackupEngine "rocksdb::BackupEngine::NewBackupEngine"(
             Env*,
