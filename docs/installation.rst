@@ -12,8 +12,9 @@ For more details consider https://github.com/facebook/rocksdb/blob/master/INSTAL
     $ apt-get install build-essential
     $ apt-get install libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
     $ git clone https://github.com/facebook/rocksdb.git
+    $ git checkout 2.8.fb
     $ cd rocksdb
-    $ make librocksdb.so
+    $ make shared_lib
 
 If you do not want to call ``make install`` export the following enviroment
 variables::
