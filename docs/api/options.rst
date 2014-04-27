@@ -617,6 +617,14 @@ Options object
         | *Type:* ``int``
         | *Default:* ``0``
 
+    .. py:attribute:: verify_checksums_in_compaction
+
+        If ``True``, compaction will verify checksum on every read that
+        happens as part of compaction.
+
+        | *Type:* ``bool``
+        | *Default:* ``True``
+
     .. py:attribute:: filter_deletes
 
         Use KeyMayExist API to filter deletes when this is true.

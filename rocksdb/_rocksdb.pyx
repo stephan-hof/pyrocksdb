@@ -951,6 +951,12 @@ cdef class Options(object):
         def __set__(self, value):
             self.opts.bytes_per_sync = value
 
+    property verify_checksums_in_compaction:
+        def __get__(self):
+            return self.opts.verify_checksums_in_compaction
+        def __set__(self, value):
+            self.opts.verify_checksums_in_compaction = value
+
     property filter_deletes:
         def __get__(self):
             return self.opts.filter_deletes

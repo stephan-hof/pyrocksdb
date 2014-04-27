@@ -98,6 +98,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         # TODO: enum { NONE, NORMAL, SEQUENTIAL, WILLNEED } access_hint_on_compaction_start
         cpp_bool use_adaptive_mutex
         uint64_t bytes_per_sync
+        cpp_bool verify_checksums_in_compaction
         # TODO: CompactionStyle compaction_style
         # TODO: CompactionOptionsUniversal compaction_options_universal
         cpp_bool filter_deletes
