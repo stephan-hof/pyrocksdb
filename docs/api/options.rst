@@ -661,7 +661,7 @@ Options object
 
         Factory for the files forming the persisten data storage.
         Sometimes they are also named SST-Files. Right now you can assign
-        instances of the following classes
+        instances of the following classes.
 
         * :py:class:`rocksdb.BlockBasedTableFactory`
         * :py:class:`rocksdb.PlainTableFactory`
@@ -803,6 +803,8 @@ LRUCache
         the least-used order. If not enough space is freed, further free the
         entries in least used order.
 
+.. _table_factories_label:
+
 TableFactories
 ==============
 
@@ -816,7 +818,7 @@ Instances of this classes can assigned to :py:attr:`rocksdb.Options.table_factor
   for low query latency on pure-memory or really low-latency media.
 
 Tutorial of rocksdb table formats is available here:
- https://github.com/facebook/rocksdb/wiki/A-Tutorial-of-RocksDB-SST-formats
+https://github.com/facebook/rocksdb/wiki/A-Tutorial-of-RocksDB-SST-formats
 
 .. py:class:: rocksdb.BlockBasedTableFactory
 

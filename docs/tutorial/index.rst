@@ -270,3 +270,58 @@ The two arguments are the db_dir and wal_dir, which are mostly the same. ::
 
     backup = rocksdb.BackupEngine("test.db/backups")
     backup.restore_latest_backup("test.db", "test.db")
+
+
+Change Memtable or SST implementations
+======================================
+
+As noted here :ref:`memtable_factories_label`, RocksDB offers different implementations for the memtable
+representation. Per default :py:class:`rocksdb.SkipListMemtableFactory` is used,
+but changeing it to a different one is veary easy.
+
+Here is an example for HashSkipList-MemtableFactory.
+Keep in mind: To use the hashed based MemtableFactories you must set
+:py:attr:`rocksdb.Options.prefix_extractor`.
+In this example all keys have a static prefix of len 5. ::
+
+    class StaticPrefix(rocksdb.interfaces.SliceTransform):
+        def name(self):
+            return b'static'
+
+        def transform(self, src):
+            return (0, 5)
+
+        def in_domain(self, src):
+            return len(src) >= 5
+
+        def in_range(self, dst):
+            return len(dst) == 5
+
+
+    opts = rocksdb.Options()
+    opts.prefix_extractor = StaticPrefix()
+    opts.memtable_factory = rocksdb.HashSkipListMemtableFactory()
+    opts.create_if_missing = True
+
+    db = rocksdb.DB("test.db", opts)
+    db.put(b'00001.x', b'x')
+    db.put(b'00001.y', b'y')
+    db.put(b'00002.x', b'x')
+
+For initial bulk loads the Vector-MemtableFactory makes sense. ::
+
+    opts = rocksdb.Options()
+    opts.memtable_factory = rocksdb.VectorMemtableFactory()
+    opts.create_if_missing = True
+
+    db = rocksdb.DB("test.db", opts)
+
+As noted here :ref:`table_factories_label`, it is also possible to change the
+representation of the final data files.
+Here is an example how to use one of the 'PlainTables'. ::
+
+    opts = rocksdb.Options()
+    opts.table_factory = rocksdb.TotalOrderPlainTableFactory()
+    opts.create_if_missing = True
+
+    db = rocksdb.DB("test.db", opts)
