@@ -25,6 +25,7 @@ cimport iterator
 cimport backup
 cimport env
 cimport table_factory
+cimport memtablerep
 
 from slice_ cimport Slice
 from status cimport Status
@@ -583,6 +584,41 @@ cdef class TotalOrderPlainTableFactory(PyTableFactory):
                 index_sparseness))
 
 #############################################
+
+### Here are the MemtableFactories
+@cython.internal
+cdef class PyMemtableFactory(object):
+    cdef shared_ptr[memtablerep.MemTableRepFactory] factory
+
+    cdef shared_ptr[memtablerep.MemTableRepFactory] get_memtable_factory(self):
+        return self.factory
+
+cdef class SkipListMemtableFactory(PyMemtableFactory):
+    def __init__(self):
+        self.factory.reset(memtablerep.NewSkipListFactory())
+
+cdef class VectorMemtableFactory(PyMemtableFactory):
+    def __init__(self, count=0):
+        self.factory.reset(memtablerep.NewVectorRepFactory(count))
+
+cdef class HashSkipListMemtableFactory(PyMemtableFactory):
+    def __init__(
+            self,
+            bucket_count=1000000,
+            skiplist_height=4,
+            skiplist_branching_factor=4):
+
+        self.factory.reset(
+            memtablerep.NewHashSkipListRepFactory(
+                bucket_count,
+                skiplist_height,
+                skiplist_branching_factor))
+
+cdef class HashLinkListMemtableFactory(PyMemtableFactory):
+    def __init__(self, bucket_count=50000):
+        self.factory.reset(memtablerep.NewHashLinkListRepFactory(bucket_count))
+##################################
+
 cdef class CompressionType(object):
     no_compression = u'no_compression'
     snappy_compression = u'snappy_compression'
@@ -598,6 +634,8 @@ cdef class Options(object):
     cdef PyCache py_block_cache_compressed
     cdef PySliceTransform py_prefix_extractor
     cdef PyTableFactory py_table_factory
+    cdef PyMemtableFactory py_memtable_factory
+
     # Used to protect sharing of Options with many DB-objects
     cdef cpp_bool in_use
 
@@ -618,6 +656,7 @@ cdef class Options(object):
         self.py_block_cache_compressed = None
         self.py_prefix_extractor = None
         self.py_table_factory = None
+        self.py_memtable_factory = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -1024,7 +1063,16 @@ cdef class Options(object):
             return self.py_table_factory
 
         def __set__(self, PyTableFactory value):
+            self.py_table_factory = value
             self.opts.table_factory = value.get_table_factory()
+
+    property memtable_factory:
+        def __get__(self):
+            return self.py_memtable_factory
+
+        def __set__(self, PyMemtableFactory value):
+            self.py_memtable_factory = value
+            self.opts.memtable_factory = value.get_memtable_factory()
 
     property inplace_update_num_locks:
         def __get__(self):

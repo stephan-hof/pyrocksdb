@@ -30,6 +30,8 @@ Target is to work with the next version of rocksdb (2.8.fb)
   * https://github.com/facebook/rocksdb/wiki/PlainTable-Format
   * https://github.com/facebook/rocksdb/wiki/How-to-persist-in-memory-RocksDB-database%3F
 
+* Add :py:attr:`rocksdb.Options.memtable_factory` option.
+
 Version 0.1
 -----------
 

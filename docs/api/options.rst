@@ -645,6 +645,18 @@ Options object
         | *Type:* ``int``
         | *Default:* ``8``
 
+    .. py:attribute:: memtable_factory
+
+        This is a factory that provides MemTableRep objects.
+        Right now you can assing instances of the following classes.
+
+        * :py:class:`rocksdb.VectorMemtableFactory`
+        * :py:class:`rocksdb.SkipListMemtableFactory`
+        * :py:class:`rocksdb.HashSkipListMemtableFactory`
+        * :py:class:`rocksdb.HashLinkListMemtableFactory`
+
+        *Default:* :py:class:`rocksdb.SkipListMemtableFactory`
+
     .. py:attribute:: table_factory
 
         Factory for the files forming the persisten data storage.
@@ -857,3 +869,67 @@ Tutorial of rocksdb table formats is available here:
 
         :param int index_sparseness:
             Need to build one index record for how many keys for binary search.
+
+
+.. _memtable_factories_label:
+
+MemtableFactories
+=================
+
+RocksDB has different classes to represent the in-memory buffer for the current
+operations. You have to assing instances of the following classes to
+:py:attr:`rocksdb.Options.memtable_factory`.
+This page has a comparison the most popular ones.
+https://github.com/facebook/rocksdb/wiki/Hash-based-memtable-implementations
+
+.. py:class:: rocksdb.VectorMemtableFactory
+
+    This creates MemTableReps that are backed by an std::vector.
+    On iteration, the vector is sorted. This is useful for workloads where
+    iteration is very rare and writes are generally not issued after reads begin.
+
+    .. py:method:: __init__(count=0)
+
+        :param int count:
+            Passed to the constructor of the underlying std::vector of each
+            VectorRep. On initialization, the underlying array will be at
+            least count bytes reserved for usage.
+
+.. py:class:: rocksdb.SkipListMemtableFactory
+
+    This uses a skip list to store keys.
+
+    .. py:method:: __init__()
+
+.. py:class:: rocksdb.HashSkipListMemtableFactory
+
+    This class contains a fixed array of buckets, each pointing
+    to a skiplist (null if the bucket is empty).
+
+    .. note::
+
+        :py:attr:`rocksdb.Options.prefix_extractor` must be set, otherwise
+        rocksdb fails back to skip-list.
+
+    .. py:method:: __init__(bucket_count = 1000000, skiplist_height = 4, skiplist_branching_factor = 4)
+
+        :param int bucket_count: number of fixed array buckets
+        :param int skiplist_height: the max height of the skiplist
+        :param int skiplist_branching_factor:
+            probabilistic size ratio between adjacent link lists in the skiplist
+
+.. py:class:: rocksdb.HashLinkListMemtableFactory
+
+    The factory is to create memtables with a hashed linked list.
+    It contains a fixed array of buckets, each pointing to a sorted single
+    linked list (null if the bucket is empty).
+
+    .. note::
+
+        :py:attr:`rocksdb.Options.prefix_extractor` must be set, otherwise
+        rocksdb fails back to skip-list.
+
+
+    .. py:method:: __init__(bucket_count=50000)
+
+        :param int bucket: number of fixed array buckets

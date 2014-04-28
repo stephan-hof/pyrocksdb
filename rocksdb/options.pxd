@@ -12,6 +12,7 @@ from slice_ cimport Slice
 from snapshot cimport Snapshot
 from slice_transform cimport SliceTransform
 from table_factory cimport TableFactory
+from memtablerep cimport MemTableRepFactory
 
 cdef extern from "rocksdb/options.h" namespace "rocksdb":
     ctypedef enum CompressionType:
@@ -104,7 +105,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         # TODO: CompactionOptionsUniversal compaction_options_universal
         cpp_bool filter_deletes
         uint64_t max_sequential_skip_in_iterations
-        # TODO: memtable_factory
+        shared_ptr[MemTableRepFactory] memtable_factory
         shared_ptr[TableFactory] table_factory
         # TODO: table_properties_collectors
         cpp_bool inplace_update_support
