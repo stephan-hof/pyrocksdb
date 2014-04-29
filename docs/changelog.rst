@@ -1,13 +1,12 @@
 Changelog
 *********
 
-Upcoming Version
-----------------
+Version 0.3
+-----------
 
-Target is rocksdb 3.0
 
 Version 0.2
-----------------
+-----------
 
 This version works with RocksDB version 2.8.fb. Now you have access to the more
 advanced options of rocksdb. Like changing the memtable or SST representation.
