@@ -625,6 +625,84 @@ Options object
         | *Type:* ``bool``
         | *Default:* ``True``
 
+    .. py:attribute:: compaction_style
+
+        The compaction style. Could be set to ``"level"`` to use level-style
+        compaction. For universal-style compaction use ``"universal"``.
+
+        | *Type:* ``string``
+        | *Default:* ``level``
+
+    .. py:attribute:: compaction_options_universal
+
+        Options to use for universal-style compaction. They make only sense if
+        :py:attr:`rocksdb.Options.compaction_style` is set to ``"universal"``.
+
+        It is a dict with the following keys.
+
+        * ``size_ratio``:
+            Percentage flexibilty while comparing file size.
+            If the candidate file(s) size is 1% smaller than the next file's size,
+            then include next file into this candidate set.
+            Default: ``1``
+
+        * ``min_merge_width``:
+            The minimum number of files in a single compaction run.
+            Default: ``2``
+
+        * ``max_merge_width``:
+            The maximum number of files in a single compaction run.
+            Default: ``UINT_MAX``
+
+        * ``max_size_amplification_percent``:
+            The size amplification is defined as the amount (in percentage) of
+            additional storage needed to store a single byte of data in the database.
+            For example, a size amplification of 2% means that a database that
+            contains 100 bytes of user-data may occupy upto 102 bytes of
+            physical storage. By this definition, a fully compacted database has
+            a size amplification of 0%. Rocksdb uses the following heuristic
+            to calculate size amplification: it assumes that all files excluding
+            the earliest file contribute to the size amplification.
+            Default: ``200``, which means that a 100 byte database could require upto
+            300 bytes of storage.
+
+        * ``compression_size_percent``:
+            If this option is set to be -1 (the default value), all the output
+            files will follow compression type specified.
+
+            If this option is not negative, we will try to make sure compressed
+            size is just above this value. In normal cases, at least this
+            percentage of data will be compressed.
+
+            When we are compacting to a new file, here is the criteria whether
+            it needs to be compressed: assuming here are the list of files sorted
+            by generation time: ``A1...An B1...Bm C1...Ct``
+            where ``A1`` is the newest and ``Ct`` is the oldest, and we are going
+            to compact ``B1...Bm``, we calculate the total size of all the files
+            as total_size, as well as the total size of ``C1...Ct`` as
+            ``total_C``, the compaction output file will be compressed if
+            ``total_C / total_size < this percentage``.
+            Default: -1
+
+        * ``stop_style``:
+            The algorithm used to stop picking files into a single compaction.
+            Can be either ``"similar_size"`` or ``"total_size"``.
+
+            * ``similar_size``: Pick files of similar size.
+            * ``total_size``: Total size of picked files is greater than next file.
+
+            Default: ``"total_size"``
+
+        For setting options, just assign a dict with the fields to set.
+        It is allowed to omit keys in this dict. Missing keys are just not set
+        to the underlying options object.
+
+        This example just changes the stop_style and leaves the other options
+        untouched. ::
+
+            opts = rocksdb.Options()
+            opts.compaction_options_universal = {'stop_style': 'similar_size'}
+
     .. py:attribute:: filter_deletes
 
         Use KeyMayExist API to filter deletes when this is true.

@@ -13,8 +13,13 @@ from snapshot cimport Snapshot
 from slice_transform cimport SliceTransform
 from table_factory cimport TableFactory
 from memtablerep cimport MemTableRepFactory
+from universal_compaction cimport CompactionOptionsUniversal
 
 cdef extern from "rocksdb/options.h" namespace "rocksdb":
+    ctypedef enum CompactionStyle:
+        kCompactionStyleLevel
+        kCompactionStyleUniversal
+
     ctypedef enum CompressionType:
         kNoCompression
         kSnappyCompression
@@ -101,8 +106,8 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         cpp_bool use_adaptive_mutex
         uint64_t bytes_per_sync
         cpp_bool verify_checksums_in_compaction
-        # TODO: CompactionStyle compaction_style
-        # TODO: CompactionOptionsUniversal compaction_options_universal
+        CompactionStyle compaction_style
+        CompactionOptionsUniversal compaction_options_universal
         cpp_bool filter_deletes
         uint64_t max_sequential_skip_in_iterations
         shared_ptr[MemTableRepFactory] memtable_factory

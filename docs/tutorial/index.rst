@@ -29,7 +29,7 @@ A more production ready open can look like this ::
 It assings a cache of 2.5G, uses a bloom filter for faster lookups and keeps
 more data (64 MB) in memory before writting a .sst file.
 
-About Bytes and Unicode
+About Bytes And Unicode
 ========================
 
 RocksDB stores all data as uninterpreted *byte strings*.
@@ -272,12 +272,12 @@ The two arguments are the db_dir and wal_dir, which are mostly the same. ::
     backup.restore_latest_backup("test.db", "test.db")
 
 
-Change Memtable or SST implementations
+Change Memtable Or SST Implementations
 ======================================
 
 As noted here :ref:`memtable_factories_label`, RocksDB offers different implementations for the memtable
 representation. Per default :py:class:`rocksdb.SkipListMemtableFactory` is used,
-but changeing it to a different one is veary easy.
+but changing it to a different one is veary easy.
 
 Here is an example for HashSkipList-MemtableFactory.
 Keep in mind: To use the hashed based MemtableFactories you must set
@@ -325,3 +325,20 @@ Here is an example how to use one of the 'PlainTables'. ::
     opts.create_if_missing = True
 
     db = rocksdb.DB("test.db", opts)
+
+Change Compaction Style
+=======================
+
+RocksDB has a compaction algorithm called *universal*. This style typically
+results in lower write amplification but higher space amplification than
+Level Style Compaction. See here for more details,
+https://github.com/facebook/rocksdb/wiki/Rocksdb-Architecture-Guide#multi-threaded-compactions
+
+Here is an example to switch to *universal style compaction*. ::
+
+    opts = rocksdb.Options()
+    opts.compaction_style = "universal"
+    opts.compaction_options_universal = {"min_merge_width": 3}
+
+See here for more options on *universal style compaction*,
+:py:attr:`rocksdb.Options.compaction_options_universal`

@@ -69,3 +69,37 @@ class TestOptions(unittest.TestCase):
         opts.table_factory = rocksdb.BlockBasedTableFactory()
         opts.table_factory = rocksdb.PlainTableFactory()
         opts.table_factory = rocksdb.TotalOrderPlainTableFactory()
+
+    def test_compaction_style(self):
+        opts = rocksdb.Options()
+        self.assertEqual('level', opts.compaction_style)
+
+        opts.compaction_style = 'universal'
+        self.assertEqual('universal', opts.compaction_style)
+
+        opts.compaction_style = 'level'
+        self.assertEqual('level', opts.compaction_style)
+
+        with self.assertRaisesRegexp(Exception, 'Unknown compaction style'):
+            opts.compaction_style = 'foo'
+
+    def test_compaction_opts_universal(self):
+        opts = rocksdb.Options()
+        uopts = opts.compaction_options_universal
+        self.assertEqual(-1, uopts['compression_size_percent'])
+        self.assertEqual(200, uopts['max_size_amplification_percent'])
+        self.assertEqual('total_size', uopts['stop_style'])
+        self.assertEqual(1, uopts['size_ratio'])
+        self.assertEqual(2, uopts['min_merge_width'])
+        self.assertGreaterEqual(4294967295, uopts['max_merge_width'])
+
+        new_opts = {'stop_style': 'similar_size', 'max_merge_width': 30}
+        opts.compaction_options_universal = new_opts
+        uopts = opts.compaction_options_universal
+
+        self.assertEqual(-1, uopts['compression_size_percent'])
+        self.assertEqual(200, uopts['max_size_amplification_percent'])
+        self.assertEqual('similar_size', uopts['stop_style'])
+        self.assertEqual(1, uopts['size_ratio'])
+        self.assertEqual(2, uopts['min_merge_width'])
+        self.assertEqual(30, uopts['max_merge_width'])

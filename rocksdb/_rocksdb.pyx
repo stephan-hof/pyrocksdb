@@ -26,6 +26,15 @@ cimport backup
 cimport env
 cimport table_factory
 cimport memtablerep
+cimport universal_compaction
+
+# Enums are the only exception for direct imports
+# Their name als already unique enough
+from universal_compaction cimport kCompactionStopStyleSimilarSize
+from universal_compaction cimport kCompactionStopStyleTotalSize
+
+from options cimport kCompactionStyleLevel
+from options cimport kCompactionStyleUniversal
 
 from slice_ cimport Slice
 from status cimport Status
@@ -1039,6 +1048,71 @@ cdef class Options(object):
             return self.opts.verify_checksums_in_compaction
         def __set__(self, value):
             self.opts.verify_checksums_in_compaction = value
+
+    property compaction_style:
+        def __get__(self):
+            if self.opts.compaction_style == kCompactionStyleLevel:
+                return 'level'
+            if self.opts.compaction_style == kCompactionStyleUniversal:
+                return 'universal'
+            raise Exception("Unknown compaction_style")
+
+        def __set__(self, str value):
+            if value == 'level':
+                self.opts.compaction_style = kCompactionStyleLevel
+            elif value == 'universal':
+                self.opts.compaction_style = kCompactionStyleUniversal
+            else:
+                raise Exception("Unknown compaction style")
+
+    property compaction_options_universal:
+        def __get__(self):
+            cdef universal_compaction.CompactionOptionsUniversal uopts
+            cdef dict ret_ob = {}
+
+            uopts = self.opts.compaction_options_universal
+
+            ret_ob['size_ratio'] = uopts.size_ratio
+            ret_ob['min_merge_width'] = uopts.min_merge_width
+            ret_ob['max_merge_width'] = uopts.max_merge_width
+            ret_ob['max_size_amplification_percent'] = uopts.max_size_amplification_percent
+            ret_ob['compression_size_percent'] = uopts.compression_size_percent
+
+            if uopts.stop_style == kCompactionStopStyleSimilarSize:
+                ret_ob['stop_style'] = 'similar_size'
+            elif uopts.stop_style == kCompactionStopStyleTotalSize:
+                ret_ob['stop_style'] = 'total_size'
+            else:
+                raise Exception("Unknown compaction style")
+
+            return ret_ob
+
+        def __set__(self, dict value):
+            cdef universal_compaction.CompactionOptionsUniversal* uopts
+            uopts = cython.address(self.opts.compaction_options_universal)
+
+            if 'size_ratio' in value:
+                uopts.size_ratio  = value['size_ratio']
+
+            if 'min_merge_width' in value:
+                uopts.min_merge_width = value['min_merge_width']
+
+            if 'max_merge_width' in value:
+                uopts.max_merge_width = value['max_merge_width']
+
+            if 'max_size_amplification_percent' in value:
+                uopts.max_size_amplification_percent = value['max_size_amplification_percent']
+
+            if 'compression_size_percent' in value:
+                uopts.compression_size_percent = value['compression_size_percent']
+
+            if 'stop_style' in value:
+                if value['stop_style'] == 'similar_size':
+                    uopts.stop_style = kCompactionStopStyleSimilarSize
+                elif value['stop_style'] == 'total_size':
+                    uopts.stop_style = kCompactionStopStyleTotalSize
+                else:
+                    raise Exception("Unknown compaction style")
 
     property filter_deletes:
         def __get__(self):
