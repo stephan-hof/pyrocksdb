@@ -32,6 +32,11 @@ For DB.iterkeys and DB.iteritems ``itertools.takewhile`` is a possible solution.
     it.seek(b'00002')
     print dict(takewhile(lambda item: item[0].startswith(b'00002'), it))
 
+**New Methods:**
+
+Make CompactRange available: :py:meth:`rocksdb.DB.compact_range`
+
+
 
 Version 0.2
 -----------
