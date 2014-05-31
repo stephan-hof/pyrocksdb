@@ -91,10 +91,10 @@ cdef extern from "rocksdb/db.h" namespace "rocksdb":
             int,
             uint64_t*) nogil except+
 
-        void CompactRange(
+        Status CompactRange(
             const Slice*,
             const Slice*,
-            bool,
+            cpp_bool,
             int) nogil except+
 
         int NumberLevels() nogil except+

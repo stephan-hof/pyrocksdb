@@ -247,6 +247,38 @@ Database object
 
         ``largest_seqno``
             largest seqno in file
+
+    .. py:method:: compact_range(begin=None, end=None, reduce_level=False, target_level=-1)
+
+        Compact the underlying storage for the key range [begin,end].
+        The actual compaction interval might be superset of [begin, end].
+        In particular, deleted and overwritten versions are discarded,
+        and the data is rearranged to reduce the cost of operations
+        needed to access the data.
+
+        This operation should typically only be invoked by users who understand
+        the underlying implementation.
+
+        ``begin == None`` is treated as a key before all keys in the database.
+        ``end == None`` is treated as a key after all keys in the database.
+        Therefore the following call will compact the entire database: ``db.compact_range()``.
+
+        Note that after the entire database is compacted, all data are pushed
+        down to the last level containing any data. If the total data size
+        after compaction is reduced, that level might not be appropriate for
+        hosting all the files. In this case, client could set reduce_level
+        to ``True``, to move the files back to the minimum level capable of holding
+        the data set or a given level (specified by non-negative target_level).
+
+        :param bytes begin: Key where to start compaction.
+                            If ``None`` start at the beginning of the database.
+        :param bytes end: Key where to end compaction.
+                          If ``None`` end at the last key of the database.
+        :param bool reduce_level:  If ``True`` allow rocksdb to move the data to
+                                   another level, if the current is not big enouth.
+                                   If ``False`` you may end with a bigger level
+                                   than configured.
+        :param int target_level: Level where to push the the range to compact.
         
     .. py:attribute:: options
 
