@@ -236,11 +236,13 @@ So always the first 5 bytes are used as the prefix ::
     db.put(b'00003.y', b'y')
     db.put(b'00003.z', b'z')
 
-    it = db.iteritems(prefix=b'00002')
-    it.seek(b'00002')
+    prefix = b'00002'
+
+    it = db.iteritems()
+    it.seek(prefix)
 
     # prints {b'00002.z': b'z', b'00002.y': b'y', b'00002.x': b'x'}
-    print dict(it)
+    print dict(itertools.takewhile(lambda item: item[].startswith(prefix), it))
 
 
 Backup And Restore

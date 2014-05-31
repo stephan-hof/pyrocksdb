@@ -3,6 +3,7 @@ import shutil
 import gc
 import unittest
 import rocksdb
+from itertools import takewhile
 
 def int_to_bytes(ob):
     return str(ob).encode('ascii')
@@ -300,7 +301,10 @@ class TestPrefixExtractor(unittest.TestCase, TestHelper):
         self._clean()
         self.db = rocksdb.DB('/tmp/test', opts)
 
-    def test_prefix(self):
+    def tearDown(self):
+        self._close_db()
+
+    def _fill_db(self):
         for x in range(3000):
             keyx = hex(x)[2:].zfill(5).encode('utf8') + b'.x'
             keyy = hex(x)[2:].zfill(5).encode('utf8') + b'.y'
@@ -309,12 +313,26 @@ class TestPrefixExtractor(unittest.TestCase, TestHelper):
             self.db.put(keyy, b'y')
             self.db.put(keyz, b'z')
 
+
+    def test_prefix_iterkeys(self):
+        self._fill_db()
         self.assertEqual(b'x', self.db.get(b'00001.x'))
         self.assertEqual(b'y', self.db.get(b'00001.y'))
         self.assertEqual(b'z', self.db.get(b'00001.z'))
 
-        it = self.db.iterkeys(prefix=b'00002')
+        it = self.db.iterkeys()
         it.seek(b'00002')
 
         ref = [b'00002.x', b'00002.y', b'00002.z']
-        self.assertEqual(ref, list(it))
+        ret = takewhile(lambda key: key.startswith(b'00002'), it)
+        self.assertEqual(ref, list(ret))
+
+    def test_prefix_iteritems(self):
+        self._fill_db()
+
+        it = self.db.iteritems()
+        it.seek(b'00002')
+
+        ref = {'00002.z': 'z', '00002.y': 'y', '00002.x': 'x'}
+        ret = takewhile(lambda item: item[0].startswith(b'00002'), it)
+        self.assertEqual(ref, dict(ret))

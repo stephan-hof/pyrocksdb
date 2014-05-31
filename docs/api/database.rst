@@ -72,7 +72,7 @@ Database object
         :param sync: See :py:meth:`rocksdb.DB.put`
         :param disable_wal: See :py:meth:`rocksdb.DB.put`
 
-    .. py:method:: get(key, verify_checksums=False, fill_cache=True, prefix_seek=False, snapshot=None, read_tier="all")
+    .. py:method:: get(key, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         :param bytes key: Name to get
 
@@ -85,10 +85,6 @@ Database object
                 read for this iteration be cached in memory?
                 Callers may wish to set this field to ``False`` for bulk scans.
         
-        :param bool prefix_seek:
-                If this option is set and memtable implementation allows.
-                Seek might only return keys with the same prefix as the seek-key
-
         :param snapshot:
             If not ``None``, read as of the supplied snapshot
             (which must belong to the DB that is being read and which must
@@ -107,7 +103,7 @@ Database object
  
         :returns: ``None`` if not found, else the value for this key
 
-    .. py:method:: multi_get(keys, verify_checksums=False, fill_cache=True, prefix_seek=False, snapshot=None, read_tier="all")
+    .. py:method:: multi_get(keys, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         :param keys: Keys to fetch
         :type keys: list of bytes
@@ -123,7 +119,7 @@ Database object
             keys will not be "de-duplicated".
             Duplicate keys will return duplicate values in order.
 
-    .. py:method:: key_may_exist(key, fetch=False, verify_checksums=False, fill_cache=True, prefix_seek=False, snapshot=None, read_tier="all")
+    .. py:method:: key_may_exist(key, fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         If the key definitely does not exist in the database, then this method
         returns ``False``, else ``True``. If the caller wants to obtain value
@@ -142,12 +138,10 @@ Database object
             * ``(True, <data>)`` if key is found and value in memory and ``fetch=True``
             * ``(False, None)`` if key is not found
 
-    .. py:method:: iterkeys(prefix=None, fetch=False, verify_checksums=False, fill_cache=True, prefix_seek=False, snapshot=None, read_tier="all")
+    .. py:method:: iterkeys(fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         Iterate over the keys
 
-        :param bytes prefix: Not implemented yet
-
         For other params see :py:meth:`rocksdb.DB.get`
 
         :returns:
@@ -156,12 +150,10 @@ Database object
 
         :rtype: :py:class:`rocksdb.BaseIterator`
 
-    .. py:method:: itervalues(prefix=None, fetch=False, verify_checksums=False, fill_cache=True, prefix_seek=False, snapshot=None, read_tier="all")
+    .. py:method:: itervalues(fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         Iterate over the values
 
-        :param bytes prefix: Not implemented yet
-
         For other params see :py:meth:`rocksdb.DB.get`
 
         :returns:
@@ -170,11 +162,9 @@ Database object
 
         :rtype: :py:class:`rocksdb.BaseIterator`
 
-    .. py:method:: iteritems(prefix=None, fetch=False, verify_checksums=False, fill_cache=True, prefix_seek=False, snapshot=None, read_tier="all")
+    .. py:method:: iteritems(fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         Iterate over the items
-
-        :param bytes prefix: Not implemented yet
 
         For other params see :py:meth:`rocksdb.DB.get`
 

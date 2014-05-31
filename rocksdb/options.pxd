@@ -123,8 +123,6 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
     cdef cppclass ReadOptions:
         cpp_bool verify_checksums
         cpp_bool fill_cache
-        cpp_bool prefix_seek
-        const Slice* prefix
         const Snapshot* snapshot
         ReadTier read_tier
 

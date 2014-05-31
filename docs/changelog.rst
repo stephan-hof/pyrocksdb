@@ -4,6 +4,34 @@ Changelog
 Version 0.3
 -----------
 
+Backward Incompatible Changes:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Prefix Seeks:**
+
+According to this page https://github.com/facebook/rocksdb/wiki/Prefix-Seek-API-Changes,
+all the prefix related parameters on ``ReadOptions`` are removed.
+Rocksdb realizes now if ``Options.prefix_extractor`` is set and uses then
+prefix-seeks automatically. This means the following changes on pyrocksdb.
+
+* DB.iterkeys, DB.itervalues, DB.iteritems have *no* ``prefix`` parameter anymore.
+* DB.get, DB.multi_get, DB.key_may_exist, DB.iterkeys, DB.itervalues, DB.iteritems
+  have *no* ``prefix_seek`` parameter anymore.
+
+Which means all the iterators walk now always to the *end* of the database.
+So if you need to stay within a prefix, write your own code to ensure that.
+For DB.iterkeys and DB.iteritems ``itertools.takewhile`` is a possible solution. ::
+
+    from itertools import takewhile
+
+    it = self.db.iterkeys()
+    it.seek(b'00002')
+    print list(takewhile(lambda key: key.startswith(b'00002'), it))
+
+    it = self.db.iteritems()
+    it.seek(b'00002')
+    print dict(takewhile(lambda item: item[0].startswith(b'00002'), it))
+
 
 Version 0.2
 -----------

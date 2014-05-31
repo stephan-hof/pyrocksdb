@@ -1461,40 +1461,36 @@ cdef class DB(object):
 
             return (exists, None)
 
-    def iterkeys(self, prefix=None, *args, **kwargs):
+    def iterkeys(self, *args, **kwargs):
         cdef options.ReadOptions opts
         cdef KeysIterator it
 
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
-
         it = KeysIterator(self)
-        it.set_prefix(opts, prefix)
 
         with nogil:
             it.ptr = self.db.NewIterator(opts)
         return it
 
-    def itervalues(self, prefix=None, *args, **kwargs):
+    def itervalues(self, *args, **kwargs):
         cdef options.ReadOptions opts
         cdef ValuesIterator it
 
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
 
         it = ValuesIterator(self)
-        it.set_prefix(opts, prefix)
 
         with nogil:
             it.ptr = self.db.NewIterator(opts)
         return it
 
-    def iteritems(self, prefix=None, *args, **kwargs):
+    def iteritems(self, *args, **kwargs):
         cdef options.ReadOptions opts
         cdef ItemsIterator it
 
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
 
         it = ItemsIterator(self)
-        it.set_prefix(opts, prefix)
 
         with nogil:
             it.ptr = self.db.NewIterator(opts)
@@ -1541,7 +1537,6 @@ cdef class DB(object):
     def __parse_read_opts(
         verify_checksums=False,
         fill_cache=True,
-        prefix_seek=False,
         snapshot=None,
         read_tier="all"):
 
@@ -1552,7 +1547,6 @@ cdef class DB(object):
         cdef options.ReadOptions opts
         opts.verify_checksums = py_opts['verify_checksums']
         opts.fill_cache = py_opts['fill_cache']
-        opts.prefix_seek = py_opts['prefix_seek']
         if py_opts['snapshot'] is not None:
             opts.snapshot = (<Snapshot?>(py_opts['snapshot'])).ptr
 
@@ -1591,9 +1585,6 @@ cdef class Snapshot(object):
 cdef class BaseIterator(object):
     cdef iterator.Iterator* ptr
     cdef DB db
-    # To keep a reference to the prefix
-    cdef object prefix
-    cdef Slice c_prefix
 
     def __cinit__(self, DB db):
         self.db = db
@@ -1618,14 +1609,6 @@ cdef class BaseIterator(object):
 
     def __reversed__(self):
         return ReversedIterator(self)
-
-    cdef set_prefix(self, options.ReadOptions& opts, object prefix=None):
-        if prefix is None:
-            return
-
-        self.c_prefix = bytes_to_slice(prefix)
-        self.prefix = prefix
-        opts.prefix = cython.address(self.c_prefix)
 
     cpdef seek_to_first(self):
         with nogil:
