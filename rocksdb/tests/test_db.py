@@ -189,6 +189,13 @@ class TestDB(unittest.TestCase, TestHelper):
         self.assertIsNotNone(self.db.get_property(b'rocksdb.num-files-at-level0'))
         self.assertIsNone(self.db.get_property(b'does not exsits'))
 
+    def test_compact_range(self):
+        for x in range(10000):
+            x = int_to_bytes(x)
+            self.db.put(x, x)
+
+        self.db.compact_range()
+
 
 class AssocCounter(rocksdb.interfaces.AssociativeMergeOperator):
     def merge(self, key, existing_value, value):

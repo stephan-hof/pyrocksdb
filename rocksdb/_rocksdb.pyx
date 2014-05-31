@@ -1533,6 +1533,34 @@ cdef class DB(object):
 
         return ret
 
+    def compact_range(self, begin=None, end=None, reduce_level=False, target_level=-1):
+
+        cdef Status st
+        cdef Slice begin_val
+        cdef Slice end_val
+
+        cdef Slice* begin_ptr
+        cdef Slice* end_ptr
+
+        begin_ptr = NULL
+        end_ptr = NULL
+
+        if begin is not None:
+            begin_val = bytes_to_slice(begin)
+            begin_ptr = cython.address(begin_val)
+
+        if end is not None:
+            end_val = bytes_to_slice(end)
+            end_ptr = cython.address(end_val)
+
+
+        st = self.db.CompactRange(
+            begin_ptr,
+            end_ptr,
+            reduce_level,
+            target_level)
+        check_status(st)
+
     @staticmethod
     def __parse_read_opts(
         verify_checksums=False,
