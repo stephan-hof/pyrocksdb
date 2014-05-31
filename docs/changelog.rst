@@ -6,6 +6,12 @@ Upcoming Version
 
 Target is rocksdb 3.0
 
+Version 0.2.1
+----------------
+
+Make CompactRange available: :py:meth:`rocksdb.DB.compact_range`
+
+
 Version 0.2
 ----------------
 
