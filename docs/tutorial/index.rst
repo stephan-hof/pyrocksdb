@@ -242,7 +242,7 @@ So always the first 5 bytes are used as the prefix ::
     it.seek(prefix)
 
     # prints {b'00002.z': b'z', b'00002.y': b'y', b'00002.x': b'x'}
-    print dict(itertools.takewhile(lambda item: item[].startswith(prefix), it))
+    print dict(itertools.takewhile(lambda item: item[0].startswith(prefix), it))
 
 
 Backup And Restore
