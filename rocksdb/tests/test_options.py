@@ -68,7 +68,6 @@ class TestOptions(unittest.TestCase):
 
         opts.table_factory = rocksdb.BlockBasedTableFactory()
         opts.table_factory = rocksdb.PlainTableFactory()
-        opts.table_factory = rocksdb.TotalOrderPlainTableFactory()
 
     def test_compaction_style(self):
         opts = rocksdb.Options()
