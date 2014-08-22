@@ -32,9 +32,16 @@ For DB.iterkeys and DB.iteritems ``itertools.takewhile`` is a possible solution.
     it.seek(b'00002')
     print dict(takewhile(lambda item: item[0].startswith(b'00002'), it))
 
-**New Methods:**
+**SST Table Builders:**
 
-Make CompactRange available: :py:meth:`rocksdb.DB.compact_range`
+* Removed ``NewTotalOrderPlainTableFactory``, because rocksdb drops it too.
+* Rename ``bloom_bits_per_prefix`` of :py:class:`rocksdb.PlainTableFactory` to ``bloom_bits_per_key``
+
+New:
+^^^^
+* Make CompactRange available: :py:meth:`rocksdb.DB.compact_range`
+* Add init options to :py:class:`rocksdb.BlockBasedTableFactory`
+* Add more option to :py:class:`rocksdb.PlainTableFactory`
 
 
 
