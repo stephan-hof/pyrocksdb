@@ -578,20 +578,6 @@ cdef class PlainTableFactory(PyTableFactory):
                 bloom_bits_per_prefix,
                 hash_table_ratio,
                 index_sparseness))
-
-cdef class TotalOrderPlainTableFactory(PyTableFactory):
-    def __init__(
-            self,
-            user_key_len=0,
-            bloom_bits_per_key=0,
-            index_sparseness=16):
-
-        self.factory.reset(
-            table_factory.NewTotalOrderPlainTableFactory(
-                user_key_len,
-                bloom_bits_per_key,
-                index_sparseness))
-
 #############################################
 
 ### Here are the MemtableFactories

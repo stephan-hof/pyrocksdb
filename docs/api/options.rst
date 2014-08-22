@@ -930,27 +930,6 @@ https://github.com/facebook/rocksdb/wiki/A-Tutorial-of-RocksDB-SST-formats
             Inside each prefix, need to build one index record for how
             many keys for binary search inside each hash bucket.
 
-.. py:class:: rocksdb.TotalOrderPlainTableFactory
-
-    This factory of plain table ignores Options.prefix_extractor and assumes no
-    hashable prefix available to the key structure. Lookup will be based on
-    binary search index only. Total order seek() can be issued.
-
-    .. py:method:: __init__(user_key_len=0, bloom_bits_per_key=0, index_sparseness=16)
-
-        :param int user_key_len:
-            Plain table has optimization for fix-sized keys, which can be
-            specified via user_key_len.
-            Alternatively, you can pass `0` if your keys have variable lengths.
-
-        :param int bloom_bits_per_key:
-            The number of bits used for bloom filer per key.
-            You may disable it by passing a zero.
-
-        :param int index_sparseness:
-            Need to build one index record for how many keys for binary search.
-
-
 .. _memtable_factories_label:
 
 MemtableFactories

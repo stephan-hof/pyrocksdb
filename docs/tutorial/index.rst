@@ -320,10 +320,10 @@ For initial bulk loads the Vector-MemtableFactory makes sense. ::
 
 As noted here :ref:`table_factories_label`, it is also possible to change the
 representation of the final data files.
-Here is an example how to use one of the 'PlainTables'. ::
+Here is an example how to use a 'PlainTable'. ::
 
     opts = rocksdb.Options()
-    opts.table_factory = rocksdb.TotalOrderPlainTableFactory()
+    opts.table_factory = rocksdb.PlainTableFactory()
     opts.create_if_missing = True
 
     db = rocksdb.DB("test.db", opts)
