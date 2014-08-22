@@ -902,6 +902,26 @@ https://github.com/facebook/rocksdb/wiki/A-Tutorial-of-RocksDB-SST-formats
 
     Wraps BlockBasedTableFactory of RocksDB.
 
+    .. py:method:: __init__(index_type='binary_search', hash_index_allow_collision=True, checksum='crc32')
+
+    :param string index_type:
+        * ``binary_search`` a space efficient index block that is optimized
+          for binary-search-based index.
+        * ``hash_search`` the hash index. If enabled, will do hash lookup
+          when `Options.prefix_extractor` is provided.
+
+    :param bool hash_index_allow_collision:
+        Influence the behavior when ``hash_search`` is used.
+        If ``False``, stores a precise prefix to block range mapping.
+        If ``True``, does not store prefix and allows prefix hash collision
+        (less memory consumption)
+
+    :param string checksum:
+        Use the specified checksum type. Newly created table files will be
+        protected with this checksum type. Old table files will still be readable,
+        even though they have different checksum type.
+        Can be either ``crc32`` or ``xxhash``.
+
 .. py:class:: rocksdb.PlainTableFactory
 
     Plain Table with prefix-only seek. It wraps rocksdb PlainTableFactory.
@@ -911,7 +931,7 @@ https://github.com/facebook/rocksdb/wiki/A-Tutorial-of-RocksDB-SST-formats
     key prefix. Inside the hash bucket found, a binary search is executed for
     hash conflicts. Finally, a linear search is used.
 
-    .. py:method:: __init__(user_key_len=0, bloom_bits_per_prefix=10, hash_table_ratio=0.75, index_sparseness=10)
+    .. py:method:: __init__(user_key_len=0, bloom_bits_per_key=10, hash_table_ratio=0.75, index_sparseness=10, huge_page_tlb_size=0, encoding_type='plain', full_scan_mode=False, store_index_in_file=False)
 
         :param int user_key_len:
             Plain table has optimization for fix-sized keys, which can be
@@ -929,6 +949,45 @@ https://github.com/facebook/rocksdb/wiki/A-Tutorial-of-RocksDB-SST-formats
         :param int index_sparseness:
             Inside each prefix, need to build one index record for how
             many keys for binary search inside each hash bucket.
+            For encoding type ``prefix``, the value will be used when
+            writing to determine an interval to rewrite the full key.
+            It will also be used as a suggestion and satisfied when possible.
+
+        :param int huge_page_tlb_size:
+            If <=0, allocate hash indexes and blooms from malloc.
+            Otherwise from huge page TLB.
+            The user needs to reserve huge pages for it to be allocated, like:
+            ``sysctl -w vm.nr_hugepages=20``
+            See linux doc Documentation/vm/hugetlbpage.txt
+
+        :param string encoding_type:
+            How to encode the keys.  The value will determine how to encode keys
+            when writing to a new SST file. This value will be stored
+            inside the SST file which will be used when reading from the
+            file, which makes it possible for users to choose different
+            encoding type when reopening a DB. Files with different
+            encoding types can co-exist in the same DB and can be read.
+
+            * ``plain``: Always write full keys without any special encoding.
+            * ``prefix``: Find opportunity to write the same prefix once for multiple rows.
+                In some cases, when a key follows a previous key with the same prefix,
+                instead of writing out the full key, it just writes out the size of the
+                shared prefix, as well as other bytes, to save some bytes.
+
+                When using this option, the user is required to use the same prefix
+                extractor to make sure the same prefix will be extracted from the same key.
+                The Name() value of the prefix extractor will be stored in the file.
+                When reopening the file, the name of the options.prefix_extractor given
+                will be bitwise compared to the prefix extractors stored in the file.
+                An error will be returned if the two don't match.
+
+        :param bool full_scan_mode:
+            Mode for reading the whole file one record by one without using the index.
+
+        :param bool store_index_in_file:
+            Compute plain table index and bloom filter during file building
+            and store it in file. When reading file, index will be mmaped
+            instead of recomputation.
 
 .. _memtable_factories_label:
 

@@ -2,6 +2,7 @@ import cython
 from libcpp.string cimport string
 from libcpp.deque cimport deque
 from libcpp.vector cimport vector
+from cpython cimport bool as py_bool
 from libcpp cimport bool as cpp_bool
 from libc.stdint cimport uint32_t
 from cython.operator cimport dereference as deref
@@ -561,23 +562,65 @@ cdef class PyTableFactory(object):
         return self.factory
 
 cdef class BlockBasedTableFactory(PyTableFactory):
-    def __init__(self):
-        self.factory.reset(table_factory.NewBlockBasedTableFactory())
+    def __init__(self,
+            index_type='binary_search',
+            py_bool hash_index_allow_collision=True,
+            checksum='crc32'):
+
+        cdef table_factory.BlockBasedTableOptions table_options
+
+        if index_type == 'binary_search':
+            table_options.index_type = table_factory.kBinarySearch
+        elif index_type == 'hash_search':
+            table_options.index_type = table_factory.kHashSearch
+        else:
+            raise ValueError("Unknown index_type: %s" % index_type)
+
+        if hash_index_allow_collision:
+            table_options.hash_index_allow_collision = True
+        else:
+            table_options.hash_index_allow_collision = False
+
+        if checksum == 'crc32':
+            table_options.checksum = table_factory.kCRC32c
+        elif checksum == 'xxhash':
+            table_options.checksum = table_factory.kxxHash
+        else:
+            raise ValueError("Unknown checksum: %s" % checksum)
+
+        self.factory.reset(table_factory.NewBlockBasedTableFactory(table_options))
 
 cdef class PlainTableFactory(PyTableFactory):
     def __init__(
             self,
             user_key_len=0,
-            bloom_bits_per_prefix=10,
+            bloom_bits_per_key=10,
             hash_table_ratio=0.75,
-            index_sparseness=10):
+            index_sparseness=10,
+            huge_page_tlb_size=0,
+            encoding_type='plain',
+            py_bool full_scan_mode=False,
+            py_bool store_index_in_file=False):
 
-        self.factory.reset(
-            table_factory.NewPlainTableFactory(
-                user_key_len,
-                bloom_bits_per_prefix,
-                hash_table_ratio,
-                index_sparseness))
+        cdef table_factory.PlainTableOptions table_options
+
+        table_options.user_key_len = user_key_len
+        table_options.bloom_bits_per_key = bloom_bits_per_key
+        table_options.hash_table_ratio = hash_table_ratio
+        table_options.index_sparseness = index_sparseness
+        table_options.huge_page_tlb_size = huge_page_tlb_size
+
+        if encoding_type == 'plain':
+            table_options.encoding_type = table_factory.kPlain
+        elif encoding_type == 'prefix':
+            table_options.encoding_type = table_factory.kPrefix
+        else:
+            raise ValueError("Unknown encoding_type: %s" % encoding_type)
+
+        table_options.full_scan_mode = full_scan_mode
+        table_options.store_index_in_file = store_index_in_file
+
+        self.factory.reset( table_factory.NewPlainTableFactory(table_options))
 #############################################
 
 ### Here are the MemtableFactories
