@@ -9,7 +9,7 @@ from status cimport Status
 from db cimport DB
 from env cimport Env
 
-cdef extern from "utilities/backupable_db.h" namespace "rocksdb":
+cdef extern from "rocksdb/utilities/backupable_db.h" namespace "rocksdb":
     ctypedef uint32_t BackupID
 
     cdef cppclass BackupableDBOptions:
