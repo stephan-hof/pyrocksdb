@@ -70,10 +70,8 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         # TODO: statistics
         cpp_bool disableDataSync
         cpp_bool use_fsync
-        int db_stats_log_interval
         string db_log_dir
         string wal_dir
-        cpp_bool disable_seek_compaction
         uint64_t delete_obsolete_files_period_micros
         int max_background_compactions
         int max_background_flushes

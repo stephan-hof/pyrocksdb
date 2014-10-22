@@ -874,12 +874,6 @@ cdef class Options(object):
         def __set__(self, value):
             self.opts.use_fsync = value
 
-    property db_stats_log_interval:
-        def __get__(self):
-            return self.opts.db_stats_log_interval
-        def __set__(self, value):
-            self.opts.db_stats_log_interval = value
-
     property db_log_dir:
         def __get__(self):
             return string_to_path(self.opts.db_log_dir)
@@ -891,12 +885,6 @@ cdef class Options(object):
             return string_to_path(self.opts.wal_dir)
         def __set__(self, value):
             self.opts.wal_dir = path_to_string(value)
-
-    property disable_seek_compaction:
-        def __get__(self):
-            return self.opts.disable_seek_compaction
-        def __set__(self, value):
-            self.opts.disable_seek_compaction = value
 
     property delete_obsolete_files_period_micros:
         def __get__(self):
