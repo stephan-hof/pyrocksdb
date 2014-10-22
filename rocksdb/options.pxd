@@ -6,7 +6,6 @@ from std_memory cimport shared_ptr
 from comparator cimport Comparator
 from merge_operator cimport MergeOperator
 from filter_policy cimport FilterPolicy
-from cache cimport Cache
 from logger cimport Logger
 from slice_ cimport Slice
 from snapshot cimport Snapshot
@@ -45,8 +44,6 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         int max_write_buffer_number
         int min_write_buffer_number_to_merge
         int max_open_files
-        shared_ptr[Cache] block_cache
-        shared_ptr[Cache] block_cache_compressed
         CompressionType compression
         # TODO: compression_per_level
         # TODO: compression_opts

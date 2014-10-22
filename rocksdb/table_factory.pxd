@@ -1,5 +1,8 @@
 from libc.stdint cimport uint32_t
 from libcpp cimport bool as cpp_bool
+from std_memory cimport shared_ptr
+
+from cache cimport Cache
 
 cdef extern from "rocksdb/table.h" namespace "rocksdb":
     cdef cppclass TableFactory:
@@ -23,6 +26,8 @@ cdef extern from "rocksdb/table.h" namespace "rocksdb":
         int block_size_deviation
         int block_restart_interval
         cpp_bool whole_key_filtering
+        shared_ptr[Cache] block_cache
+        shared_ptr[Cache] block_cache_compressed
 
     cdef TableFactory* NewBlockBasedTableFactory(const BlockBasedTableOptions&)
 

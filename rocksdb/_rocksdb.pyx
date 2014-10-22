@@ -566,6 +566,8 @@ cdef class BlockBasedTableFactory(PyTableFactory):
             index_type='binary_search',
             py_bool hash_index_allow_collision=True,
             checksum='crc32',
+            PyCache block_cache=None,
+            PyCache block_cache_compressed=None,
             no_block_cache=False,
             block_size=None,
             block_size_deviation=None,
@@ -613,6 +615,12 @@ cdef class BlockBasedTableFactory(PyTableFactory):
                 table_options.whole_key_filtering = True
             else:
                 table_options.whole_key_filtering = False
+
+        if block_cache is not None:
+            table_options.block_cache = block_cache.get_cache()
+
+        if block_cache_compressed is not None:
+            table_options.block_cache_compressed = block_cache_compressed.get_cache()
 
         self.factory.reset(table_factory.NewBlockBasedTableFactory(table_options))
 
@@ -694,8 +702,6 @@ cdef class Options(object):
     cdef PyComparator py_comparator
     cdef PyMergeOperator py_merge_operator
     cdef PyFilterPolicy py_filter_policy
-    cdef PyCache py_block_cache
-    cdef PyCache py_block_cache_compressed
     cdef PySliceTransform py_prefix_extractor
     cdef PyTableFactory py_table_factory
     cdef PyMemtableFactory py_memtable_factory
@@ -716,8 +722,6 @@ cdef class Options(object):
         self.py_comparator = BytewiseComparator()
         self.py_merge_operator = None
         self.py_filter_policy = None
-        self.py_block_cache = None
-        self.py_block_cache_compressed = None
         self.py_prefix_extractor = None
         self.py_table_factory = None
         self.py_memtable_factory = None
@@ -1217,41 +1221,6 @@ cdef class Options(object):
         def __set__(self, value):
             self.py_prefix_extractor = PySliceTransform(value)
             self.opts.prefix_extractor = self.py_prefix_extractor.get_transformer()
-
-    property block_cache:
-        def __get__(self):
-            if self.py_block_cache is None:
-                return None
-            return self.py_block_cache.get_ob()
-
-        def __set__(self, value):
-            if value is None:
-                self.py_block_cache = None
-                self.opts.block_cache.reset()
-            else:
-                if not isinstance(value, PyCache):
-                    raise TypeError("%s is not a Cache" % value)
-
-                self.py_block_cache = value
-                self.opts.block_cache = self.py_block_cache.get_cache()
-
-    property block_cache_compressed:
-        def __get__(self):
-            if self.py_block_cache_compressed is None:
-                return None
-            return self.py_block_cache_compressed.get_ob()
-
-        def __set__(self, value):
-            if value is None:
-                self.py_block_cache_compressed = None
-                self.opts.block_cache_compressed.reset()
-                return
-
-            if not isinstance(value, PyCache):
-                raise TypeError("%s is not a Cache" % value)
-
-            self.py_block_cache_compressed = value
-            self.opts.block_cache_compressed = (<PyCache>value).get_cache()
 
 # Forward declaration
 cdef class Snapshot
