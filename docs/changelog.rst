@@ -35,14 +35,26 @@ For DB.iterkeys and DB.iteritems ``itertools.takewhile`` is a possible solution.
 **SST Table Builders:**
 
 * Removed ``NewTotalOrderPlainTableFactory``, because rocksdb drops it too.
+
+**Changed Options:**
+
+In newer versions of rocksdb a bunch of options were moved or removed.
+
 * Rename ``bloom_bits_per_prefix`` of :py:class:`rocksdb.PlainTableFactory` to ``bloom_bits_per_key``
+* Removed ``Options.db_stats_log_interval``.
+* Removed ``Options.disable_seek_compaction``
+* Moved ``Options.no_block_cache`` to ``BlockBasedTableFactory``
+* Moved ``Options.block_size`` to ``BlockBasedTableFactory``
+* Moved ``Options.block_size_deviation`` to ``BlockBasedTableFactory``
+* Moved ``Options.block_restart_interval`` to ``BlockBasedTableFactory``
+* Moved ``Options.whole_key_filtering`` to ``BlockBasedTableFactory``
+
 
 New:
 ^^^^
 * Make CompactRange available: :py:meth:`rocksdb.DB.compact_range`
 * Add init options to :py:class:`rocksdb.BlockBasedTableFactory`
 * Add more option to :py:class:`rocksdb.PlainTableFactory`
-
 
 
 Version 0.2

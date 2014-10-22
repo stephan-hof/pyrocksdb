@@ -109,45 +109,6 @@ Options object
         | *Type:* ``int``
         | *Default:* ``5000``
 
-    .. py:attribute:: block_cache
-
-        Control over blocks (user data is stored in a set of blocks, and
-        a block is the unit of reading from disk).
-
-        If not ``None`` use the specified cache for blocks.
-        If ``None``, rocksdb will automatically create and use an 8MB internal cache.
-
-        | *Type:* Instace of :py:class:`rocksdb.LRUCache`
-        | *Default:* ``None``
-
-    .. py:attribute:: block_cache_compressed
-
-        If not ``None`` use the specified cache for compressed blocks.
-        If ``None``, rocksdb will not use a compressed block cache.
-
-        | *Type:* Instace of :py:class:`rocksdb.LRUCache`
-        | *Default:* ``None``
-
-    .. py:attribute:: block_size
-
-        Approximate size of user data packed per block.  Note that the
-        block size specified here corresponds to uncompressed data.  The
-        actual size of the unit read from disk may be smaller if
-        compression is enabled.  This parameter can be changed dynamically.
- 
-        | *Type:* ``int``
-        | *Default:* ``4096``
-
-
-    .. py:attribute:: block_restart_interval
-
-        Number of keys between restart points for delta encoding of keys.
-        This parameter can be changed dynamically.  Most clients should
-        leave this parameter alone.
- 
-        | *Type:* ``int``
-        | *Default:* ``16``
-
     .. py:attribute:: compression
 
         Compress blocks using the specified compression algorithm.
@@ -155,15 +116,6 @@ Options object
 
         | *Type:* Member of :py:class:`rocksdb.CompressionType`
         | *Default:* :py:attr:`rocksdb.CompressionType.snappy_compression`
-
-    .. py:attribute:: whole_key_filtering
-
-        If ``True``, place whole keys in the filter (not just prefixes).
-        This must generally be true for gets to be efficient.
-
-        | *Type:* ``bool``
-        | *Default:* ``True``
-
 
     .. py:attribute:: num_levels
 
@@ -315,15 +267,6 @@ Options object
         | *Type:* ``bool``
         | *Default:* ``False``
 
-    .. py:attribute:: db_stats_log_interval
-
-        This number controls how often a new scribe log about
-        db deploy stats is written out.
-        -1 indicates no logging at all.
-
-        | *Type:* ``int``
-        | *Default:* ``1800``
-
     .. py:attribute:: db_log_dir
 
         This specifies the info LOG dir.
@@ -345,16 +288,6 @@ Options object
 
         | *Type:* ``unicode``
         | *Default:* ``""``
-
-    .. py:attribute:: disable_seek_compaction
-
-        Disable compaction triggered by seek.
-        With bloomfilter and fast storage, a miss on one level
-        is very cheap if the file handle is cached in table cache
-        (which is true if max_open_files is large).
-
-        | *Type:* ``bool``
-        | *Default:* ``True``
 
     .. py:attribute:: delete_obsolete_files_period_micros
 
@@ -453,15 +386,6 @@ Options object
 
         | *Type:* ``int``
         | *Default:* ``(2**64) - 1``
-
-    .. py:attribute:: no_block_cache
-
-        Disable block cache. If this is set to true,
-        then no block cache should be used, and the block_cache should
-        point to ``None``
-
-        | *Type:* ``bool``
-        | *Default:* ``False``
 
     .. py:attribute:: table_cache_numshardbits
 
@@ -578,17 +502,6 @@ Options object
 
         | *Type:* ``int``
         | *Default:* ``3600``
-
-    .. py:attribute:: block_size_deviation
-
-        This is used to close a block before it reaches the configured
-        'block_size'. If the percentage of free space in the current block is less
-        than this specified number and adding a new record to the block will
-        exceed the configured block size, then this block will be closed and the
-        new record will be written to the next block.
-
-        | *Type:* ``int``
-        | *Default:* ``10``
 
     .. py:attribute:: advise_random_on_open
 
@@ -797,15 +710,6 @@ Options object
         
         *Default:* ``None``
 
-    .. py:attribute:: filter_policy
-
-        If not ``None`` use the specified filter policy to reduce disk reads.
-        A python filter policy must implement the
-        :py:class:`rocksdb.interfaces.FilterPolicy` interface.
-        Recommendes is a instance of :py:class:`rocksdb.BloomFilterPolicy`
-
-        *Default:* ``None``
-
     .. py:attribute:: prefix_extractor
 
         If not ``None``, use the specified function to determine the
@@ -902,7 +806,8 @@ https://github.com/facebook/rocksdb/wiki/A-Tutorial-of-RocksDB-SST-formats
 
     Wraps BlockBasedTableFactory of RocksDB.
 
-    .. py:method:: __init__(index_type='binary_search', hash_index_allow_collision=True, checksum='crc32')
+    .. py:method:: __init__(index_type='binary_search', hash_index_allow_collision=True, checksum='crc32', block_cache, block_cache_compressed, filter_policy=None, no_block_cache=False, block_size=None, block_size_deviation=None, block_restart_interval=None, whole_key_filtering=None):
+
 
     :param string index_type:
         * ``binary_search`` a space efficient index block that is optimized
@@ -921,6 +826,56 @@ https://github.com/facebook/rocksdb/wiki/A-Tutorial-of-RocksDB-SST-formats
         protected with this checksum type. Old table files will still be readable,
         even though they have different checksum type.
         Can be either ``crc32`` or ``xxhash``.
+
+    :param block_cache:
+        Control over blocks (user data is stored in a set of blocks, and
+        a block is the unit of reading from disk).
+
+        If ``None``, rocksdb will automatically create and use an 8MB internal cache.
+        If not ``None`` use the specified cache for blocks. In that case it must
+        be an instance of :py:class:`rocksdb.LRUCache`
+
+    :param block_cache_compressed:
+        If ``None``, rocksdb will not use a compressed block cache.
+        If not ``None`` use the specified cache for compressed blocks. In that
+        case it must be an instance of :py:class:`rocksdb.LRUCache`
+
+    :param filter_policy:
+        If not ``None`` use the specified filter policy to reduce disk reads.
+        A python filter policy must implement the
+        :py:class:`rocksdb.interfaces.FilterPolicy` interface.
+        Recommended is a instance of :py:class:`rocksdb.BloomFilterPolicy`
+
+    :param bool no_block_cache:
+        Disable block cache. If this is set to true,
+        then no block cache should be used, and the block_cache should
+        point to ``None``
+
+    :param int block_size:
+        If set to ``None`` the rocksdb default of ``4096`` is used.
+        Approximate size of user data packed per block.  Note that the
+        block size specified here corresponds to uncompressed data.  The
+        actual size of the unit read from disk may be smaller if
+        compression is enabled.  This parameter can be changed dynamically.
+
+    :param int block_size_deviation:
+        If set to ``None`` the rocksdb default of ``10`` is used.
+        This is used to close a block before it reaches the configured
+        'block_size'. If the percentage of free space in the current block is less
+        than this specified number and adding a new record to the block will
+        exceed the configured block size, then this block will be closed and the
+        new record will be written to the next block.
+
+    :param int block_restart_interval:
+        If set to ``None`` the rocksdb default of ``16`` is used.
+        Number of keys between restart points for delta encoding of keys.
+        This parameter can be changed dynamically.  Most clients should
+        leave this parameter alone.
+
+    :param bool whole_key_filtering:
+        If set to ``None`` the rocksdb default of ``True`` is used.
+        If ``True``, place whole keys in the filter (not just prefixes).
+        This must generally be true for gets to be efficient.
 
 .. py:class:: rocksdb.PlainTableFactory
 

@@ -20,9 +20,11 @@ A more production ready open can look like this ::
     opts.write_buffer_size = 67108864
     opts.max_write_buffer_number = 3
     opts.target_file_size_base = 67108864
-    opts.filter_policy = rocksdb.BloomFilterPolicy(10)
-    opts.block_cache = rocksdb.LRUCache(2 * (1024 ** 3))
-    opts.block_cache_compressed = rocksdb.LRUCache(500 * (1024 ** 2))
+
+    opts.table_factory = rocksdb.BlockBasedTableFactory(
+        filter_policy=rocksdb.BloomFilterPolicy(10),
+        block_cache=rocksdb.LRUCache(2 * (1024 ** 3)),
+        block_cache_compressed=rocksdb.LRUCache(500 * (1024 ** 2)))
 
     db = rocksdb.DB("test.db", opts)
 
