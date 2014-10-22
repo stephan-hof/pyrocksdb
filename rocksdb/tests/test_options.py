@@ -28,11 +28,6 @@ class TestOptions(unittest.TestCase):
         opts.paranoid_checks = False
         self.assertEqual(False, opts.paranoid_checks)
 
-        self.assertIsNone(opts.filter_policy)
-        ob = TestFilterPolicy()
-        opts.filter_policy = ob
-        self.assertEqual(opts.filter_policy, ob)
-
         self.assertIsNone(opts.merge_operator)
         ob = TestMergeOperator()
         opts.merge_operator = ob
@@ -46,12 +41,11 @@ class TestOptions(unittest.TestCase):
         opts.compression = rocksdb.CompressionType.no_compression
         self.assertEqual('no_compression', opts.compression)
 
-        self.assertEqual(opts.block_size, 4096)
-
-        self.assertIsNone(opts.block_cache)
-        ob = rocksdb.LRUCache(100)
-        opts.block_cache = ob
-        self.assertEqual(ob, opts.block_cache)
+    def test_block_options(self):
+        rocksdb.BlockBasedTableFactory(
+            block_size=4096,
+            filter_policy=TestFilterPolicy(),
+            block_cache=rocksdb.LRUCache(100))
 
     def test_unicode_path(self):
         name = b'/tmp/M\xc3\xbcnchen'.decode('utf8')

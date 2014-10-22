@@ -340,6 +340,6 @@ class TestPrefixExtractor(unittest.TestCase, TestHelper):
         it = self.db.iteritems()
         it.seek(b'00002')
 
-        ref = {'00002.z': 'z', '00002.y': 'y', '00002.x': 'x'}
+        ref = {b'00002.z': b'z', b'00002.y': b'y', b'00002.x': b'x'}
         ret = takewhile(lambda item: item[0].startswith(b'00002'), it)
         self.assertEqual(ref, dict(ret))
