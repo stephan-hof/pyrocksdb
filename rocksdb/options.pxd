@@ -51,7 +51,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         int level0_slowdown_writes_trigger
         int level0_stop_writes_trigger
         int max_mem_compaction_level
-        int target_file_size_base
+        uint64_t target_file_size_base
         int target_file_size_multiplier
         uint64_t max_bytes_for_level_base
         int max_bytes_for_level_multiplier
