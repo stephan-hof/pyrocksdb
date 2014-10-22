@@ -3,6 +3,7 @@ from libcpp cimport bool as cpp_bool
 from std_memory cimport shared_ptr
 
 from cache cimport Cache
+from filter_policy cimport FilterPolicy
 
 cdef extern from "rocksdb/table.h" namespace "rocksdb":
     cdef cppclass TableFactory:
@@ -28,6 +29,7 @@ cdef extern from "rocksdb/table.h" namespace "rocksdb":
         cpp_bool whole_key_filtering
         shared_ptr[Cache] block_cache
         shared_ptr[Cache] block_cache_compressed
+        shared_ptr[FilterPolicy] filter_policy
 
     cdef TableFactory* NewBlockBasedTableFactory(const BlockBasedTableOptions&)
 

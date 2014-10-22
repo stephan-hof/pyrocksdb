@@ -5,7 +5,6 @@ from libc.stdint cimport uint64_t
 from std_memory cimport shared_ptr
 from comparator cimport Comparator
 from merge_operator cimport MergeOperator
-from filter_policy cimport FilterPolicy
 from logger cimport Logger
 from slice_ cimport Slice
 from snapshot cimport Snapshot
@@ -32,7 +31,6 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
     cdef cppclass Options:
         const Comparator* comparator
         shared_ptr[MergeOperator] merge_operator
-        const FilterPolicy* filter_policy
         # TODO: compaction_filter
         # TODO: compaction_filter_factory
         cpp_bool create_if_missing
