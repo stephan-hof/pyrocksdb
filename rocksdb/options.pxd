@@ -47,13 +47,10 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         int max_open_files
         shared_ptr[Cache] block_cache
         shared_ptr[Cache] block_cache_compressed
-        size_t block_size
-        int block_restart_interval
         CompressionType compression
         # TODO: compression_per_level
         # TODO: compression_opts
         shared_ptr[SliceTransform] prefix_extractor
-        cpp_bool whole_key_filtering
         int num_levels
         int level0_file_num_compaction_trigger
         int level0_slowdown_writes_trigger
@@ -82,7 +79,6 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         double hard_rate_limit
         unsigned int rate_limit_delay_max_milliseconds
         uint64_t max_manifest_file_size
-        cpp_bool no_block_cache
         int table_cache_numshardbits
         int table_cache_remove_scan_count_limit
         size_t arena_block_size
@@ -98,7 +94,6 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         cpp_bool is_fd_close_on_exec
         cpp_bool skip_log_error_on_recovery
         unsigned int stats_dump_period_sec
-        int block_size_deviation
         cpp_bool advise_random_on_open
         # TODO: enum { NONE, NORMAL, SEQUENTIAL, WILLNEED } access_hint_on_compaction_start
         cpp_bool use_adaptive_mutex

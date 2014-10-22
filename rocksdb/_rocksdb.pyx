@@ -565,7 +565,12 @@ cdef class BlockBasedTableFactory(PyTableFactory):
     def __init__(self,
             index_type='binary_search',
             py_bool hash_index_allow_collision=True,
-            checksum='crc32'):
+            checksum='crc32',
+            no_block_cache=False,
+            block_size=None,
+            block_size_deviation=None,
+            block_restart_interval=None,
+            whole_key_filtering=None):
 
         cdef table_factory.BlockBasedTableOptions table_options
 
@@ -587,6 +592,27 @@ cdef class BlockBasedTableFactory(PyTableFactory):
             table_options.checksum = table_factory.kxxHash
         else:
             raise ValueError("Unknown checksum: %s" % checksum)
+
+        if no_block_cache:
+            table_options.no_block_cache = True
+        else:
+            table_options.no_block_cache = False
+
+        # If the following options are None use the rocksdb default.
+        if block_size is not None:
+            table_options.block_size = block_size
+
+        if block_size_deviation is not None:
+            table_options.block_size_deviation = block_size_deviation
+
+        if block_restart_interval is not None:
+            table_options.block_restart_interval = block_restart_interval
+
+        if whole_key_filtering is not None:
+            if whole_key_filtering:
+                table_options.whole_key_filtering = True
+            else:
+                table_options.whole_key_filtering = False
 
         self.factory.reset(table_factory.NewBlockBasedTableFactory(table_options))
 
@@ -741,18 +767,6 @@ cdef class Options(object):
         def __set__(self, value):
             self.opts.max_open_files = value
 
-    property block_size:
-        def __get__(self):
-            return self.opts.block_size
-        def __set__(self, value):
-            self.opts.block_size = value
-
-    property block_restart_interval:
-        def __get__(self):
-            return self.opts.block_restart_interval
-        def __set__(self, value):
-            self.opts.block_restart_interval = value
-
     property compression:
         def __get__(self):
             if self.opts.compression == options.kNoCompression:
@@ -777,12 +791,6 @@ cdef class Options(object):
                 self.opts.compression = options.kBZip2Compression
             else:
                 raise TypeError("Unknown compression: %s" % value)
-
-    property whole_key_filtering:
-        def __get__(self):
-            return self.opts.whole_key_filtering
-        def __set__(self, value):
-            self.opts.whole_key_filtering = value
 
     property num_levels:
         def __get__(self):
@@ -946,12 +954,6 @@ cdef class Options(object):
         def __set__(self, value):
             self.opts.max_manifest_file_size = value
 
-    property no_block_cache:
-        def __get__(self):
-            return self.opts.no_block_cache
-        def __set__(self, value):
-            self.opts.no_block_cache = value
-
     property table_cache_numshardbits:
         def __get__(self):
             return self.opts.table_cache_numshardbits
@@ -1035,12 +1037,6 @@ cdef class Options(object):
             return self.opts.stats_dump_period_sec
         def __set__(self, value):
             self.opts.stats_dump_period_sec = value
-
-    property block_size_deviation:
-        def __get__(self):
-            return self.opts.block_size_deviation
-        def __set__(self, value):
-            self.opts.block_size_deviation = value
 
     property advise_random_on_open:
         def __get__(self):

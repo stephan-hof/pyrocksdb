@@ -18,6 +18,11 @@ cdef extern from "rocksdb/table.h" namespace "rocksdb":
         BlockBasedTableIndexType index_type
         cpp_bool hash_index_allow_collision
         ChecksumType checksum
+        cpp_bool no_block_cache
+        size_t block_size
+        int block_size_deviation
+        int block_restart_interval
+        cpp_bool whole_key_filtering
 
     cdef TableFactory* NewBlockBasedTableFactory(const BlockBasedTableOptions&)
 
