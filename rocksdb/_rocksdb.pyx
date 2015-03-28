@@ -444,13 +444,7 @@ cdef class PyLRUCache(PyCache):
 
     def __cinit__(self, capacity, shard_bits=None, rm_scan_count_limit=None):
         if shard_bits is not None:
-            if rm_scan_count_limit is not None:
-                self.cache_ob = cache.NewLRUCache(
-                    capacity,
-                    shard_bits,
-                    rm_scan_count_limit)
-            else:
-                self.cache_ob = cache.NewLRUCache(capacity, shard_bits)
+            self.cache_ob = cache.NewLRUCache(capacity, shard_bits)
         else:
             self.cache_ob = cache.NewLRUCache(capacity)
 
@@ -975,12 +969,6 @@ cdef class Options(object):
             return self.opts.table_cache_numshardbits
         def __set__(self, value):
             self.opts.table_cache_numshardbits = value
-
-    property table_cache_remove_scan_count_limit:
-        def __get__(self):
-            return self.opts.table_cache_remove_scan_count_limit
-        def __set__(self, value):
-            self.opts.table_cache_remove_scan_count_limit = value
 
     property arena_block_size:
         def __get__(self):
