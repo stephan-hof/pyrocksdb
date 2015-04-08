@@ -6,7 +6,7 @@ Python bindings for RocksDB. See http://pyrocksdb.readthedocs.org for details
 
 ### Build rocksdb
 
-    $ apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev cython
+    $ apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
     $ git clone https://github.com/facebook/rocksdb.git
     $ cd rocksdb
     $ git checkout 1c47c433ba2c391dc0367edf16b3138afb3e8af1
@@ -20,7 +20,7 @@ If you do not want to call `make install` export the following enviroment variab
 
 ### Build pyrocksdb
 
-    $ apt-get install python-virtualenv python-dev
+    $ apt-get install python-virtualenv python-dev cython
     $ virtualenv pyrocks_test
     $ cd pyrocks_test
     $ . bin/activate
