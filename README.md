@@ -21,7 +21,7 @@ If you do not want to call `make install` export the following enviroment variab
 ### Build pyrocksdb
 
     $ apt-get install python-virtualenv python-dev cython
-    $ virtualenv pyrocks_test
+    $ virtualenv pyrocks_test --system-site-packages
     $ cd pyrocks_test
     $ . bin/activate
     $ pip install git+git://github.com/balena/pyrocksdb.git
