@@ -29,6 +29,7 @@ cdef extern from "rocksdb/utilities/backupable_db.h" namespace "rocksdb":
         Status RestoreDBFromBackup(BackupID, string&, string&) nogil except+
         Status RestoreDBFromLatestBackup(string&, string&) nogil except+
 
-    cdef BackupEngine* NewBackupEngine "rocksdb::BackupEngine::NewBackupEngine"(
+    cdef Status BackupEngine_Open "rocksdb::BackupEngine::Open"(
             Env*,
-            BackupableDBOptions&)
+            BackupableDBOptions&,
+            BackupEngine**)

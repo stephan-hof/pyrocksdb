@@ -1688,13 +1688,17 @@ cdef class BackupEngine(object):
     cdef backup.BackupEngine* engine
 
     def  __cinit__(self, backup_dir):
+        cdef Status st
         cdef string c_backup_dir
         self.engine = NULL
 
         c_backup_dir = path_to_string(backup_dir)
-        self.engine = backup.NewBackupEngine(
+        st = backup.BackupEngine_Open(
             env.Env_Default(),
-            backup.BackupableDBOptions(c_backup_dir))
+            backup.BackupableDBOptions(c_backup_dir),
+            cython.address(self.engine))
+
+        check_status(st)
 
     def __dealloc__(self):
         if not self.engine == NULL:
