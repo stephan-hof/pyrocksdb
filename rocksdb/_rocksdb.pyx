@@ -976,12 +976,6 @@ cdef class Options(object):
         def __set__(self, value):
             self.opts.table_cache_numshardbits = value
 
-    property table_cache_remove_scan_count_limit:
-        def __get__(self):
-            return self.opts.table_cache_remove_scan_count_limit
-        def __set__(self, value):
-            self.opts.table_cache_remove_scan_count_limit = value
-
     property arena_block_size:
         def __get__(self):
             return self.opts.arena_block_size

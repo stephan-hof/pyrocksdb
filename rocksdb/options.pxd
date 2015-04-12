@@ -75,7 +75,6 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         unsigned int rate_limit_delay_max_milliseconds
         uint64_t max_manifest_file_size
         int table_cache_numshardbits
-        int table_cache_remove_scan_count_limit
         size_t arena_block_size
         # TODO: PrepareForBulkLoad()
         cpp_bool disable_auto_compactions
