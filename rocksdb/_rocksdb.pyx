@@ -442,15 +442,9 @@ cdef class PyCache(object):
 cdef class PyLRUCache(PyCache):
     cdef shared_ptr[cache.Cache] cache_ob
 
-    def __cinit__(self, capacity, shard_bits=None, rm_scan_count_limit=None):
+    def __cinit__(self, capacity, shard_bits=None):
         if shard_bits is not None:
-            if rm_scan_count_limit is not None:
-                self.cache_ob = cache.NewLRUCache(
-                    capacity,
-                    shard_bits,
-                    rm_scan_count_limit)
-            else:
-                self.cache_ob = cache.NewLRUCache(capacity, shard_bits)
+            self.cache_ob = cache.NewLRUCache(capacity, shard_bits)
         else:
             self.cache_ob = cache.NewLRUCache(capacity)
 

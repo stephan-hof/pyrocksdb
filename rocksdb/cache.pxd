@@ -6,4 +6,3 @@ cdef extern from "rocksdb/cache.h" namespace "rocksdb":
 
     cdef extern shared_ptr[Cache] NewLRUCache(size_t)
     cdef extern shared_ptr[Cache] NewLRUCache(size_t, int)
-    cdef extern shared_ptr[Cache] NewLRUCache(size_t, int, int)

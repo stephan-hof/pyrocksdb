@@ -761,16 +761,11 @@ LRUCache
 
     Wraps the rocksdb LRUCache
 
-    .. py:method:: __init__(capacity, shard_bits=None, rm_scan_count_limit=None)
+    .. py:method:: __init__(capacity, shard_bits=None)
 
         Create a new cache with a fixed size capacity. The cache is sharded
         to 2^numShardBits shards, by hash of the key. The total capacity
-        is divided and evenly assigned to each shard. Inside each shard,
-        the eviction is done in two passes: first try to free spaces by
-        evicting entries that are among the most least used removeScanCountLimit
-        entries and do not have reference other than by the cache itself, in
-        the least-used order. If not enough space is freed, further free the
-        entries in least used order.
+        is divided and evenly assigned to each shard.
 
 .. _table_factories_label:
 

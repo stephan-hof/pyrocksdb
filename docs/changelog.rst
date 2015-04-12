@@ -49,6 +49,8 @@ In newer versions of rocksdb a bunch of options were moved or removed.
 * Moved ``Options.block_restart_interval`` to ``BlockBasedTableFactory``
 * Moved ``Options.whole_key_filtering`` to ``BlockBasedTableFactory``
 * Removed ``Options.table_cache_remove_scan_count_limit``
+* Removed rm_scan_count_limit from ``LRUCache``
+
 
 New:
 ^^^^
