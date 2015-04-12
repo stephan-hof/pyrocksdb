@@ -26,7 +26,7 @@ cdef extern from "rocksdb/db.h" namespace "rocksdb":
     cdef struct LiveFileMetaData:
         string name
         int level
-        size_t size
+        uint64_t size
         string smallestkey
         string largestkey
         SequenceNumber smallest_seqno
