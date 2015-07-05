@@ -1,6 +1,10 @@
 Changelog
 *********
 
+Version 0.4
+-----------
+Nothing in yet.
+
 Version 0.3
 -----------
 This version works with RocksDB version v3.11.
