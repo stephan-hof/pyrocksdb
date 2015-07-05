@@ -75,13 +75,6 @@ class TestDB(unittest.TestCase, TestHelper):
 
     def test_write_batch_iter(self):
         batch = rocksdb.WriteBatch()
-        batch.put(b"key1", b"v1")
-        batch.delete(b'a')
-        batch.merge(b'xxx', b'value')
-        for op, key, value in batch:
-            print op, key, value
-
-        batch = rocksdb.WriteBatch()
         self.assertEqual([], list(batch))
 
         batch.put(b"key1", b"v1")
