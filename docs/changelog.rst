@@ -3,6 +3,7 @@ Changelog
 
 Version 0.3
 -----------
+This version works with RocksDB version v3.11.
 
 Backward Incompatible Changes:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
