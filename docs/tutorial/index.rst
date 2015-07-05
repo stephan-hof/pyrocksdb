@@ -346,3 +346,22 @@ Here is an example to switch to *universal style compaction*. ::
 
 See here for more options on *universal style compaction*,
 :py:attr:`rocksdb.Options.compaction_options_universal`
+
+Iterate Over WriteBatch
+=======================
+
+In same cases you need to know, what operations happened on a WriteBatch.
+The pyrocksdb WriteBatch supports the iterator protocol, see this example. ::
+
+    batch = rocksdb.WriteBatch()
+    batch.put(b"key1", b"v1")
+    batch.delete(b'a')
+    batch.merge(b'xxx', b'value')
+
+    for op, key, value in batch:
+        print op, key, value
+
+    # prints the following three lines
+    # Put key1 v1
+    # Delete a
+    # Merge xxx value

@@ -1214,6 +1214,9 @@ cdef class ValuesIterator
 cdef class ItemsIterator
 cdef class ReversedIterator
 
+# Forward declaration
+cdef class WriteBatchIterator
+
 cdef class WriteBatch(object):
     cdef db.WriteBatch* batch
 
@@ -1245,6 +1248,51 @@ cdef class WriteBatch(object):
 
     def count(self):
         return self.batch.Count()
+
+    def __iter__(self):
+        return WriteBatchIterator(self)
+
+
+@cython.internal
+cdef class WriteBatchIterator(object):
+    # Need a reference to the WriteBatch.
+    # The BatchItems are only pointers to the memory in WriteBatch.
+    cdef WriteBatch batch
+    cdef vector[db.BatchItem] items
+    cdef size_t pos
+
+    def __init__(self, WriteBatch batch):
+        cdef Status st
+
+        self.batch = batch
+        self.pos = 0
+
+        st = db.get_batch_items(batch.batch, cython.address(self.items))
+        check_status(st)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.pos == self.items.size():
+            raise StopIteration()
+
+        cdef str op
+
+        if self.items[self.pos].op == db.BatchItemOpPut:
+            op = "Put"
+        elif self.items[self.pos].op == db.BatchItemOpMerge:
+            op = "Merge"
+        elif self.items[self.pos].op == db.BatchItemOpDelte:
+            op = "Delete"
+
+        ret = (
+            op,
+            slice_to_bytes(self.items[self.pos].key),
+            slice_to_bytes(self.items[self.pos].value))
+
+        self.pos += 1
+        return ret
 
 @cython.no_gc_clear
 cdef class DB(object):

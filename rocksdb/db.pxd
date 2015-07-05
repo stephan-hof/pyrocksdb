@@ -20,6 +20,20 @@ cdef extern from "rocksdb/write_batch.h" namespace "rocksdb":
         const string& Data() nogil except+
         int Count() nogil except+
 
+cdef extern from "cpp/write_batch_iter_helper.hpp" namespace "py_rocks":
+    cdef enum BatchItemOp "RecordItemsHandler::Optype":
+        BatchItemOpPut "py_rocks::RecordItemsHandler::Optype::PutRecord"
+        BatchItemOpMerge "py_rocks::RecordItemsHandler::Optype::MergeRecord"
+        BatchItemOpDelte "py_rocks::RecordItemsHandler::Optype::DeleteRecord"
+
+    cdef cppclass BatchItem "py_rocks::RecordItemsHandler::BatchItem":
+        BatchItemOp op
+        Slice key
+        Slice value
+
+    Status get_batch_items(WriteBatch* batch, vector[BatchItem]* items)
+
+
 cdef extern from "rocksdb/db.h" namespace "rocksdb":
     ctypedef uint64_t SequenceNumber
 

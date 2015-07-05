@@ -73,6 +73,37 @@ class TestDB(unittest.TestCase, TestHelper):
         ret = self.db.multi_get([b'key', b'a'])
         self.assertEqual(ref, ret)
 
+    def test_write_batch_iter(self):
+        batch = rocksdb.WriteBatch()
+        batch.put(b"key1", b"v1")
+        batch.delete(b'a')
+        batch.merge(b'xxx', b'value')
+        for op, key, value in batch:
+            print op, key, value
+
+        batch = rocksdb.WriteBatch()
+        self.assertEqual([], list(batch))
+
+        batch.put(b"key1", b"v1")
+        batch.put(b"key2", b"v2")
+        batch.put(b"key3", b"v3")
+        batch.delete(b'a')
+        batch.delete(b'key1')
+        batch.merge(b'xxx', b'value')
+
+        it = iter(batch)
+        del batch
+        ref = [
+            ('Put', 'key1', 'v1'),
+            ('Put', 'key2', 'v2'),
+            ('Put', 'key3', 'v3'),
+            ('Delete', 'a', ''),
+            ('Delete', 'key1', ''),
+            ('Merge', 'xxx', 'value')
+        ]
+        self.assertEqual(ref, list(it))
+
+
     def test_key_may_exists(self):
         self.db.put(b"a", b'1')
 

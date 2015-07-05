@@ -57,6 +57,7 @@ New:
 * Make CompactRange available: :py:meth:`rocksdb.DB.compact_range`
 * Add init options to :py:class:`rocksdb.BlockBasedTableFactory`
 * Add more option to :py:class:`rocksdb.PlainTableFactory`
+* Add :py:class:`rocksdb.WriteBatchIterator`
 
 
 Version 0.2

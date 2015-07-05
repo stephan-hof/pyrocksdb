@@ -364,6 +364,11 @@ WriteBatch
 
         Clear all updates buffered in this batch.
 
+        .. note::
+            Don't call this method if there is an outstanding iterator.
+            Calling :py:meth:`rocksdb.WriteBatch.clear()` with outstanding
+            iterator, leads to SEGFAULT.
+
     .. py:method:: data()
 
         Retrieve the serialized version of this batch.
@@ -375,6 +380,49 @@ WriteBatch
         Returns the number of updates in the batch
 
         :rtype: int
+
+    .. py:method:: __iter__()
+
+        Returns an iterator over the current contents of the write batch.
+
+        If you add new items to the batch, they are not visible for this
+        iterator. Create a new one if you need to see them.
+
+        .. note::
+            Calling :py:meth:`rocksdb.WriteBatch.clear()` on the write batch
+            invalidates the iterator.  Using a iterator where its corresponding
+            write batch has been cleared, leads to SEGFAULT.
+
+        :rtype: :py:class:`rocksdb.WriteBatchIterator`
+
+WriteBatchIterator
+==================
+
+.. py:class:: rocksdb.WriteBatchIterator
+
+    .. py:method:: __iter__()
+
+        Returns self.
+
+    .. py:method:: __next__()
+
+        Returns the next item inside the corresponding write batch.
+        The return value is a tuple of always size three.
+
+        First item (Name of the operation):
+
+            * ``"Put"``
+            * ``"Merge"``
+            * ``"Delete"``
+
+        Second item (key):
+            Key for this operation.
+
+        Third item (value):
+            The value for this operation. Empty for ``"Delete"``.
+
+    changelog
+    tutoro
 
 Errors
 ======
