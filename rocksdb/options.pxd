@@ -23,6 +23,8 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         kSnappyCompression
         kZlibCompression
         kBZip2Compression
+        kLZ4Compression
+        kLZ4HCCompression
 
     ctypedef enum ReadTier:
         kReadAllTier

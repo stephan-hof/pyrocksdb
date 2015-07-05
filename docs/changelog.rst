@@ -58,6 +58,8 @@ New:
 * Add init options to :py:class:`rocksdb.BlockBasedTableFactory`
 * Add more option to :py:class:`rocksdb.PlainTableFactory`
 * Add :py:class:`rocksdb.WriteBatchIterator`
+* add :py:attr:`rocksdb.CompressionType.lz4_compression`
+* add :py:attr:`rocksdb.CompressionType.lz4hc_compression`
 
 
 Version 0.2

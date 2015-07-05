@@ -730,6 +730,8 @@ CompressionTypes
     .. py:attribute:: snappy_compression
     .. py:attribute:: zlib_compression
     .. py:attribute:: bzip2_compression
+    .. py:attribute:: lz4_compression
+    .. py:attribute:: lz4hc_compression
 
 BytewiseComparator
 ==================

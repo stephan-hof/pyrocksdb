@@ -704,6 +704,8 @@ cdef class CompressionType(object):
     snappy_compression = u'snappy_compression'
     zlib_compression = u'zlib_compression'
     bzip2_compression = u'bzip2_compression'
+    lz4_compression = u'lz4_compression'
+    lz4hc_compression = u'lz4hc_compression'
 
 cdef class Options(object):
     cdef options.Options* opts
@@ -787,6 +789,10 @@ cdef class Options(object):
                 return CompressionType.zlib_compression
             elif self.opts.compression == options.kBZip2Compression:
                 return CompressionType.bzip2_compression
+            elif self.opts.compression == options.kLZ4Compression:
+                return CompressionType.lz4_compression
+            elif self.opts.compression == options.kLZ4HCCompression:
+                return CompressionType.lz4hc_compression
             else:
                 raise Exception("Unknonw type: %s" % self.opts.compression)
 
@@ -799,6 +805,10 @@ cdef class Options(object):
                 self.opts.compression = options.kZlibCompression
             elif value == CompressionType.bzip2_compression:
                 self.opts.compression = options.kBZip2Compression
+            elif value == CompressionType.lz4_compression:
+                self.opts.compression = options.kLZ4Compression
+            elif value == CompressionType.lz4hc_compression:
+                self.opts.compression = options.kLZ4HCCompression
             else:
                 raise TypeError("Unknown compression: %s" % value)
 
