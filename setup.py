@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 
 extension_defaults = {
     'extra_compile_args': [
-        '-std=gnu++11',
+        '-std=c++11',
         '-O3',
         '-Wall',
         '-Wextra',
