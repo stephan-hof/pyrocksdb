@@ -3,7 +3,9 @@ Changelog
 
 Version 0.4
 -----------
-Nothing in yet.
+
+*  Added :py:func:`repair_db`
+
 
 Version 0.3
 -----------

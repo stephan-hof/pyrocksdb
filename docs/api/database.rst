@@ -421,8 +421,20 @@ WriteBatchIterator
         Third item (value):
             The value for this operation. Empty for ``"Delete"``.
 
-    changelog
-    tutoro
+Repair DB
+=========
+
+.. py:function:: repair_db(db_name, opts)
+
+    :param unicode db_name: Name of the database to open
+    :param opts: Options for this specific database
+    :type opts: :py:class:`rocksdb.Options`
+
+    If a DB cannot be opened, you may attempt to call this method to
+    resurrect as much of the contents of the database as possible.
+    Some data may be lost, so be careful when calling this function
+    on a database that contains important information.
+
 
 Errors
 ======

@@ -140,3 +140,5 @@ cdef extern from "rocksdb/db.h" namespace "rocksdb":
         const string&,
         DB**,
         cpp_bool) nogil except+
+
+    cdef Status RepairDB(const string& dbname, const options.Options&)

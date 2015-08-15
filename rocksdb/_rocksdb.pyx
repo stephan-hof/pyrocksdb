@@ -1615,6 +1615,16 @@ cdef class DB(object):
         def __get__(self):
             return self.opts
 
+
+def repair_db(db_name, Options opts):
+    cdef Status st
+    cdef string db_path
+
+    db_path = path_to_string(db_name)
+    st = db.RepairDB(db_path, deref(opts.opts))
+    check_status(st)
+
+
 @cython.no_gc_clear
 @cython.internal
 cdef class Snapshot(object):
