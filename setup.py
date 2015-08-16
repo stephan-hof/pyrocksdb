@@ -1,9 +1,12 @@
-from setuptools import setup, find_packages
+from setuptools import setup
+from setuptools import find_packages
 from distutils.extension import Extension
 from Cython.Build import cythonize
 
-extension_defaults = {
-    'extra_compile_args': [
+mod1 = Extension(
+    'rocksdb._rocksdb',
+    ['rocksdb/_rocksdb.pyx'],
+    extra_compile_args=[
         '-std=c++11',
         '-O3',
         '-Wall',
@@ -11,19 +14,13 @@ extension_defaults = {
         '-Wconversion',
         '-fno-strict-aliasing'
     ],
-    'language': 'c++',
-    'libraries': [
+    language='c++',
+    libraries=[
         'rocksdb',
         'snappy',
         'bz2',
         'z'
     ]
-}
-
-mod1 = Extension(
-    'rocksdb._rocksdb',
-    ['rocksdb/_rocksdb.pyx'],
-    **extension_defaults
 )
 
 setup(
