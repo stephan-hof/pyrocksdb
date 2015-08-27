@@ -2,6 +2,7 @@ from libcpp cimport bool as cpp_bool
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libc.stdint cimport uint64_t
+from libc.stdint cimport uint32_t
 from std_memory cimport shared_ptr
 from comparator cimport Comparator
 from merge_operator cimport MergeOperator
@@ -117,3 +118,14 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
 
     cdef cppclass FlushOptions:
         cpp_bool wait
+
+    ctypedef enum BottommostLevelCompaction:
+        blc_skip "rocksdb::BottommostLevelCompaction::kSkip"
+        blc_is_filter "rocksdb::BottommostLevelCompaction::kIfHaveCompactionFilter"
+        blc_force "rocksdb::BottommostLevelCompaction::kForce"
+
+    cdef cppclass CompactRangeOptions:
+        cpp_bool change_level
+        int target_level
+        uint32_t target_path_id
+        BottommostLevelCompaction bottommost_level_compaction

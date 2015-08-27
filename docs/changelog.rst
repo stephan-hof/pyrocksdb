@@ -4,7 +4,16 @@ Changelog
 Version 0.4
 -----------
 
-*  Added :py:func:`repair_db`
+* Added :py:func:`repair_db`.
+
+Backward Incompatible Changes:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Changed API of :py:meth:`rocksdb.DB.compact_range`.
+
+    * Only allow keyword arguments.
+    * Changed ``reduce_level`` to ``change_level``.
+    * Add new argument called ``bottommost_level_compaction``.
 
 
 Version 0.3

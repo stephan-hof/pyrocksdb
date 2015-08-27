@@ -238,7 +238,7 @@ Database object
         ``largest_seqno``
             largest seqno in file
 
-    .. py:method:: compact_range(begin=None, end=None, reduce_level=False, target_level=-1)
+    .. py:method:: compact_range(begin=None, end=None, ** options)
 
         Compact the underlying storage for the key range [begin,end].
         The actual compaction interval might be superset of [begin, end].
@@ -256,7 +256,7 @@ Database object
         Note that after the entire database is compacted, all data are pushed
         down to the last level containing any data. If the total data size
         after compaction is reduced, that level might not be appropriate for
-        hosting all the files. In this case, client could set reduce_level
+        hosting all the files. In this case, client could set change_level
         to ``True``, to move the files back to the minimum level capable of holding
         the data set or a given level (specified by non-negative target_level).
 
@@ -264,11 +264,29 @@ Database object
                             If ``None`` start at the beginning of the database.
         :param bytes end: Key where to end compaction.
                           If ``None`` end at the last key of the database.
-        :param bool reduce_level:  If ``True`` allow rocksdb to move the data to
-                                   another level, if the current is not big enouth.
+        :param bool change_level:  If ``True``, compacted files will be moved to
+                                   the minimum level capable of holding the data
+                                   or given level (specified by non-negative target_level).
                                    If ``False`` you may end with a bigger level
-                                   than configured.
-        :param int target_level: Level where to push the the range to compact.
+                                   than configured. Default is ``False``.
+        :param int target_level: If change_level is true and target_level have non-negative
+                                 value, compacted files will be moved to target_level.
+                                 Default is ``-1``.
+        :param string bottommost_level_compaction:
+            For level based compaction, we can configure if we want to
+            skip/force bottommost level compaction. By default level based
+            compaction will only compact the bottommost level if there is a
+            compaction filter. It can be set to the following values.
+
+            ``skip``
+                Skip bottommost level compaction
+
+            ``if_compaction_filter``
+                Only compact bottommost level if there is a compaction filter.
+                This is the default.
+
+            ``force``
+                Always compact bottommost level
         
     .. py:attribute:: options
 

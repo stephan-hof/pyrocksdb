@@ -1557,7 +1557,21 @@ cdef class DB(object):
 
         return ret
 
-    def compact_range(self, begin=None, end=None, reduce_level=False, target_level=-1):
+    def compact_range(self, begin=None, end=None, **py_options):
+        cdef options.CompactRangeOptions c_options
+
+        c_options.change_level = py_options.get('change_level', False)
+        c_options.target_level = py_options.get('target_level', -1)
+
+        blc = py_options.get('bottommost_level_compaction', 'if_compaction_filter')
+        if blc == 'skip':
+            c_options.bottommost_level_compaction = options.blc_skip
+        elif blc == 'if_compaction_filter':
+            c_options.bottommost_level_compaction = options.blc_is_filter
+        elif blc == 'force':
+            c_options.bottommost_level_compaction = options.blc_force
+        else:
+            raise ValueError("bottommost_level_compaction is not valid")
 
         cdef Status st
         cdef Slice begin_val
@@ -1577,12 +1591,7 @@ cdef class DB(object):
             end_val = bytes_to_slice(end)
             end_ptr = cython.address(end_val)
 
-
-        st = self.db.CompactRange(
-            begin_ptr,
-            end_ptr,
-            reduce_level,
-            target_level)
+        st = self.db.CompactRange(c_options, begin_ptr, end_ptr)
         check_status(st)
 
     @staticmethod
