@@ -5,6 +5,7 @@ Version 0.4
 -----------
 
 * Added :py:func:`repair_db`.
+* Added :py:meth:`rocksdb.Options.row_cache`
 
 Backward Incompatible Changes:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

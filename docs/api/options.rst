@@ -716,7 +716,14 @@ Options object
         3. ``If compare(k1, k2) <= 0, then compare(prefix(k1), prefix(k2)) <= 0``
         4. ``prefix(prefix(key)) == prefix(key)``
 
-    *Default:* ``None``
+        *Default:* ``None``
+
+    .. py:attribute:: row_cache
+
+        A global cache for table-level rows. If ``None`` this cache is not used.
+        Otherwise it must be an instance of :py:class:`rocksdb.LRUCache`
+
+        *Default:* ``None``
 
 
 CompressionTypes
@@ -765,9 +772,9 @@ LRUCache
 
     .. py:method:: __init__(capacity, shard_bits=None)
 
-        Create a new cache with a fixed size capacity. The cache is sharded
-        to 2^numShardBits shards, by hash of the key. The total capacity
-        is divided and evenly assigned to each shard.
+        Create a new cache with a fixed size capacity (in bytes).
+        The cache is sharded to 2^numShardBits shards, by hash of the key.
+        The total capacity is divided and evenly assigned to each shard.
 
 .. _table_factories_label:
 
