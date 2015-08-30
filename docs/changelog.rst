@@ -3,6 +3,7 @@ Changelog
 
 Version 0.4
 -----------
+This version works with RocksDB v3.12.
 
 * Added :py:func:`repair_db`.
 * Added :py:meth:`rocksdb.Options.row_cache`
