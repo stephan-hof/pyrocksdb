@@ -13,6 +13,7 @@ from slice_transform cimport SliceTransform
 from table_factory cimport TableFactory
 from memtablerep cimport MemTableRepFactory
 from universal_compaction cimport CompactionOptionsUniversal
+from cache cimport Cache
 
 cdef extern from "rocksdb/options.h" namespace "rocksdb":
     ctypedef enum CompactionStyle:
@@ -105,6 +106,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         # TODO: table_properties_collectors
         cpp_bool inplace_update_support
         size_t inplace_update_num_locks
+        shared_ptr[Cache] row_cache
 
     cdef cppclass WriteOptions:
         cpp_bool sync

@@ -708,6 +708,7 @@ cdef class Options(object):
     cdef PySliceTransform py_prefix_extractor
     cdef PyTableFactory py_table_factory
     cdef PyMemtableFactory py_memtable_factory
+    cdef PyCache py_row_cache
 
     # Used to protect sharing of Options with many DB-objects
     cdef cpp_bool in_use
@@ -727,6 +728,7 @@ cdef class Options(object):
         self.py_prefix_extractor = None
         self.py_table_factory = None
         self.py_memtable_factory = None
+        self.py_row_cache = None
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -1209,6 +1211,21 @@ cdef class Options(object):
         def __set__(self, value):
             self.py_prefix_extractor = PySliceTransform(value)
             self.opts.prefix_extractor = self.py_prefix_extractor.get_transformer()
+
+    property row_cache:
+        def __get__(self):
+            return self.py_row_cache
+
+        def __set__(self, value):
+            if value is None:
+                self.py_row_cache = None
+                self.opts.row_cache.reset()
+            elif not isinstance(value, PyCache):
+                raise Exception("row_cache must be a Cache object")
+            else:
+                self.py_row_cache = value
+                self.opts.row_cache = self.py_row_cache.get_cache()
+
 
 # Forward declaration
 cdef class Snapshot

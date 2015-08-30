@@ -96,3 +96,9 @@ class TestOptions(unittest.TestCase):
         self.assertEqual(1, uopts['size_ratio'])
         self.assertEqual(2, uopts['min_merge_width'])
         self.assertEqual(30, uopts['max_merge_width'])
+
+    def test_row_cache(self):
+        opts = rocksdb.Options()
+        self.assertIsNone(opts.row_cache)
+        opts.row_cache = cache = rocksdb.LRUCache(2*1024*1024)
+        self.assertEqual(cache, opts.row_cache)
