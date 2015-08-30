@@ -432,9 +432,6 @@ cdef cpp_bool partial_merge_callback(
 #### Here comes the Cache stuff
 @cython.internal
 cdef class PyCache(object):
-    cdef object get_ob(self):
-        return None
-
     cdef shared_ptr[cache.Cache] get_cache(self):
         return shared_ptr[cache.Cache]()
 
@@ -447,9 +444,6 @@ cdef class PyLRUCache(PyCache):
             self.cache_ob = cache.NewLRUCache(capacity, shard_bits)
         else:
             self.cache_ob = cache.NewLRUCache(capacity)
-
-    cdef object get_ob(self):
-        return self
 
     cdef shared_ptr[cache.Cache] get_cache(self):
         return self.cache_ob
