@@ -4,6 +4,7 @@ Changelog
 Version 0.5
 -----------
 
+* Added support for column families.
 
 Version 0.4
 -----------
