@@ -820,6 +820,12 @@ cdef class Options(object):
         def __set__(self, value):
             self.opts.num_levels = value
 
+    property optimize_filters_for_hits:
+        def __get__(self):
+            return self.opts.optimize_filters_for_hits
+        def __set__(self, value):
+            self.opts.optimize_filters_for_hits = value
+
     property level0_file_num_compaction_trigger:
         def __get__(self):
             return self.opts.level0_file_num_compaction_trigger
