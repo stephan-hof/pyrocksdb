@@ -87,12 +87,12 @@ class TestDB(unittest.TestCase, TestHelper):
         it = iter(batch)
         del batch
         ref = [
-            ('Put', 'key1', 'v1'),
-            ('Put', 'key2', 'v2'),
-            ('Put', 'key3', 'v3'),
-            ('Delete', 'a', ''),
-            ('Delete', 'key1', ''),
-            ('Merge', 'xxx', 'value')
+            ('Put', b'key1', b'v1'),
+            ('Put', b'key2', b'v2'),
+            ('Put', b'key3', b'v3'),
+            ('Delete', b'a', b''),
+            ('Delete', b'key1', b''),
+            ('Merge', b'xxx', b'value')
         ]
         self.assertEqual(ref, list(it))
 

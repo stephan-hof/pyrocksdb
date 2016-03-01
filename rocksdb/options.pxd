@@ -51,6 +51,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         # TODO: compression_opts
         shared_ptr[SliceTransform] prefix_extractor
         int num_levels
+        cpp_bool optimize_filters_for_hits
         int level0_file_num_compaction_trigger
         int level0_slowdown_writes_trigger
         int level0_stop_writes_trigger
