@@ -6,23 +6,35 @@ Database object
 
 .. py:class:: rocksdb.DB
 
-    .. py:method:: __init__(db_name, Options opts, read_only=False)
+    .. py:method:: __init__(db_name, Options opts, column_families=None, read_only=False)
 
         :param unicode db_name:  Name of the database to open
         :param opts: Options for this specific database
         :type opts: :py:class:`rocksdb.Options`
+        :param list column_families: List of column family names to
+                                     open the database with. Note that
+                                     if the database is not read only
+                                     then all existing column families
+                                     will have to be given. If the database
+                                     is opened read only, then a subset of
+                                     the column families can be given. See the
+                                     :py:func:`rocksdb.list_column_families`
+                                     function. The default is not to use
+                                     column families.
         :param bool read_only: If ``True`` the database is opened read-only.
                                All DB calls which modify data will raise an
                                Exception.
 
 
-    .. py:method:: put(key, value, sync=False, disable_wal=False)
+    .. py:method:: put(key, value, column_family=None, sync=False, disable_wal=False)
 
         Set the database entry for "key" to "value".
 
         :param bytes key: Name for this entry
         :param bytes value: Data for this entry
-        :param bool sync: 
+        :param ColumnFamilyHandle column_family: The column family to update
+
+        :param bool sync:
             If ``True``, the write will be flushed from the operating system
             buffer cache (by calling WritableFile::Sync()) before the write
             is considered complete.  If this flag is true, writes will be
@@ -42,22 +54,29 @@ Database object
             If ``True``, writes will not first go to the write ahead log,
             and the write may got lost after a crash.
 
-    .. py:method:: delete(key, sync=False, disable_wal=False)
+    .. py:method:: delete(key, column_family=None, sync=False, disable_wal=False)
 
         Remove the database entry for "key".
 
         :param bytes key: Name to delete
+        :param ColumnFamilyHandle column_family: The column family to delete from
         :param sync: See :py:meth:`rocksdb.DB.put`
         :param disable_wal: See :py:meth:`rocksdb.DB.put`
         :raises rocksdb.errors.NotFound: If the key did not exists
 
-    .. py:method:: merge(key, value, sync=False, disable_wal=False)
+    .. py:method:: merge(key, value, column_family=None, sync=False, disable_wal=False)
 
         Merge the database entry for "key" with "value".
         The semantics of this operation is determined by the user provided
         merge_operator when opening DB.
 
         See :py:meth:`rocksdb.DB.put` for the parameters
+
+        :param bytes key: Name for this entry
+        :param bytes value: Data for this entry
+        :param ColumnFamilyHandle column_family: The column family to update
+        :param sync: See :py:meth:`rocksdb.DB.put`
+        :param disable_wal: See :py:meth:`rocksdb.DB.put`
 
         :raises:
             :py:exc:`rocksdb.errors.NotSupported` if this is called and
@@ -72,11 +91,13 @@ Database object
         :param sync: See :py:meth:`rocksdb.DB.put`
         :param disable_wal: See :py:meth:`rocksdb.DB.put`
 
-    .. py:method:: get(key, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
+    .. py:method:: get(key, column_family=None, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         :param bytes key: Name to get
 
-        :param bool verify_checksums: 
+        :param ColumnFamilyHandle column_family: The column family to get from.
+
+        :param bool verify_checksums:
             If ``True``, all data read from underlying storage will be
             verified against corresponding checksums.
 
@@ -84,7 +105,7 @@ Database object
                 Should the "data block", "index block" or "filter block"
                 read for this iteration be cached in memory?
                 Callers may wish to set this field to ``False`` for bulk scans.
-        
+
         :param snapshot:
             If not ``None``, read as of the supplied snapshot
             (which must belong to the DB that is being read and which must
@@ -100,13 +121,18 @@ Database object
 
             | Use ``all`` if a fetch from disk is allowed.
             | Use ``cache`` if only data from cache is allowed.
- 
+
         :returns: ``None`` if not found, else the value for this key
 
-    .. py:method:: multi_get(keys, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
+    .. py:method:: multi_get(keys, column_families=None, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         :param keys: Keys to fetch
         :type keys: list of bytes
+        :param list column_families: list of
+                                     :py:class:`rocksdb.ColumnFamilyHandle`
+                                     instances. Note that these need
+                                     to match up with the list of
+                                     keys.
 
         For the other params see :py:meth:`rocksdb.DB.get`
 
@@ -114,12 +140,12 @@ Database object
             A ``dict`` where the value is either ``bytes`` or ``None`` if not found
 
         :raises: If the fetch for a single key fails
-        
+
         .. note::
             keys will not be "de-duplicated".
             Duplicate keys will return duplicate values in order.
 
-    .. py:method:: key_may_exist(key, fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
+    .. py:method:: key_may_exist(key, column_family=None, fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         If the key definitely does not exist in the database, then this method
         returns ``False``, else ``True``. If the caller wants to obtain value
@@ -128,20 +154,22 @@ Database object
         One way to make this lighter weight is to avoid doing any IOs.
 
         :param bytes key: Key to check
+        :param ColumnFamilyHandle column_family: The column family to use
         :param bool fetch: Obtain also the value if found
 
         For the other params see :py:meth:`rocksdb.DB.get`
 
-        :returns: 
+        :returns:
             * ``(True, None)`` if key is found but value not in memory
             * ``(True, None)`` if key is found and ``fetch=False``
             * ``(True, <data>)`` if key is found and value in memory and ``fetch=True``
             * ``(False, None)`` if key is not found
 
-    .. py:method:: iterkeys(fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
+    .. py:method:: iterkeys(column_family=None, fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         Iterate over the keys
 
+        :param ColumnFamilyHandle column_family: The column family to iterate over
         For other params see :py:meth:`rocksdb.DB.get`
 
         :returns:
@@ -150,10 +178,11 @@ Database object
 
         :rtype: :py:class:`rocksdb.BaseIterator`
 
-    .. py:method:: itervalues(fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
+    .. py:method:: itervalues(column_family=None, fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         Iterate over the values
 
+        :param ColumnFamilyHandle column_family: The column family to iterate over
         For other params see :py:meth:`rocksdb.DB.get`
 
         :returns:
@@ -162,10 +191,11 @@ Database object
 
         :rtype: :py:class:`rocksdb.BaseIterator`
 
-    .. py:method:: iteritems(fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
+    .. py:method:: iteritems(column_family=None, fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         Iterate over the items
 
+        :param ColumnFamilyHandle column_family: The column family to iterate over
         For other params see :py:meth:`rocksdb.DB.get`
 
         :returns:
@@ -174,24 +204,30 @@ Database object
 
         :rtype: :py:class:`rocksdb.BaseIterator`
 
+    .. py:method:: create_column_family(name)
+
+       Creates a new column family with the given name.
+
+       :returns: An instance of :py:class:`rocksdb.ColumnFamilyHandle`.
+
     .. py:method:: snapshot()
-    
+
         Return a handle to the current DB state.
         Iterators created with this handle will all observe a stable snapshot
         of the current DB state.
-        
+
         :rtype: :py:class:`rocksdb.Snapshot`
 
 
-    .. py:method:: get_property(prop)
+    .. py:method:: get_property(prop, column_family=None)
 
         DB implementations can export properties about their state
         via this method. If "property" is a valid property understood by this
         DB implementation, a byte string with its value is returned.
         Otherwise ``None``
-        
+
         Valid property names include:
-        
+
         * ``b"rocksdb.num-files-at-level<N>"``: return the number of files at level <N>,
             where <N> is an ASCII representation of a level number (e.g. "0").
 
@@ -210,6 +246,8 @@ Database object
         * ``b"rocksdb.background-errors"``: Returns accumulated background errors encountered.
 
         * ``b"rocksdb.cur-size-active-mem-table"``: Returns current size of the active memtable.
+
+        :param ColumnFamilyHandle column_family: The column family to get the property from
 
     .. py:method:: get_live_files_metadata()
 
@@ -238,7 +276,7 @@ Database object
         ``largest_seqno``
             largest seqno in file
 
-    .. py:method:: compact_range(begin=None, end=None, ** options)
+    .. py:method:: compact_range(column_family=None, begin=None, end=None, ** options)
 
         Compact the underlying storage for the key range [begin,end].
         The actual compaction interval might be superset of [begin, end].
@@ -260,6 +298,7 @@ Database object
         to ``True``, to move the files back to the minimum level capable of holding
         the data set or a given level (specified by non-negative target_level).
 
+        :param ColumnFamilyHandle column_family: The column family to compact.
         :param bytes begin: Key where to start compaction.
                             If ``None`` start at the beginning of the database.
         :param bytes end: Key where to end compaction.
@@ -287,7 +326,7 @@ Database object
 
             ``force``
                 Always compact bottommost level
-        
+
     .. py:attribute:: options
 
         Returns the associated :py:class:`rocksdb.Options` instance.
@@ -296,6 +335,11 @@ Database object
 
             Changes to this object have no effect anymore.
             Consider this as read-only
+
+    .. py:attribute:: column_family_handles
+
+        Returns a dict with column family names as keys and
+        :py:class:`rocksdb.ColumnFamilyHandle` instances as values.
 
 Iterator
 ========
@@ -310,18 +354,38 @@ Iterator
             Position at the first key in the source
 
     .. py:method:: seek_to_last()
-    
+
             Position at the last key in the source
 
     .. py:method:: seek(key)
-    
+
         :param bytes key: Position at the first key in the source that at or past
- 
+
     Methods to support the python iterator protocol
 
     .. py:method:: __iter__()
     .. py:method:: __next__()
     .. py:method:: __reversed__()
+
+ColumnFamilyHandle
+==================
+
+.. py:class:: rocksdb.ColumnFamilyHandle
+
+   A handle to a single column family. A column family handle is released when the
+   database is closed. Make sure that you don't hold any references to the column
+   family handle at that point.
+
+   Retrieved via :py:meth:`rocksdb.DB.create_column_family` or the
+   :py:attr:`rocksdb.DB.column_family_handles` dict.
+
+    .. py:attribute:: name
+
+       The column family name.
+
+    .. py:attribute:: id
+
+       The column family identifier (an int).
 
 Snapshot
 ========
@@ -342,7 +406,7 @@ WriteBatch
      The updates are applied in the order in which they are added
      to the WriteBatch.  For example, the value of "key" will be "v3"
      after the following batch is written::
-     
+
         batch = rocksdb.WriteBatch()
         batch.put(b"key", b"v1")
         batch.delete(b"key")
@@ -358,25 +422,28 @@ WriteBatch
             from a previous .data() call. If ``None`` a empty WriteBatch is
             generated
 
-    .. py:method:: put(key, value)
-    
+    .. py:method:: put(key, value, column_family=None)
+
         Store the mapping "key->value" in the database.
 
         :param bytes key: Name of the entry to store
         :param bytes value: Data of this entry
+        :param ColumnFamilyHandle column_family: The column family to update
 
-    .. py:method:: merge(key, value)
-    
+    .. py:method:: merge(key, value, column_family=None)
+
         Merge "value" with the existing value of "key" in the database.
 
         :param bytes key: Name of the entry to merge
         :param bytes value: Data to merge
+        :param ColumnFamilyHandle column_family: The column family to update
 
-    .. py:method:: delete(key)
- 
+    .. py:method:: delete(key, column_family=None)
+
         If the database contains a mapping for "key", erase it.  Else do nothing.
 
         :param bytes key: Key to erase
+        :param ColumnFamilyHandle column_family: The column family to delete from
 
     .. py:method:: clear()
 
@@ -394,7 +461,7 @@ WriteBatch
         :rtype: ``bytes``
 
     .. py:method:: count()
-    
+
         Returns the number of updates in the batch
 
         :rtype: int
@@ -439,6 +506,18 @@ WriteBatchIterator
         Third item (value):
             The value for this operation. Empty for ``"Delete"``.
 
+List column families
+====================
+
+.. py:function:: list_column_families(db_name, opts)
+
+    :param unicode db_name: Name of the database to open
+    :param opts: Options for this specific database
+    :type opts: :py:class:`rocksdb.Options`
+
+    Returns a list of strings containing the names of the column
+    families in the database.
+
 Repair DB
 =========
 
@@ -464,5 +543,3 @@ Errors
 .. py:exception:: rocksdb.errors.RocksIOError
 .. py:exception:: rocksdb.errors.MergeInProgress
 .. py:exception:: rocksdb.errors.Incomplete
-
-
