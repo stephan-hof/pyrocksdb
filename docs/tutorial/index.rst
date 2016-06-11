@@ -365,3 +365,63 @@ The pyrocksdb WriteBatch supports the iterator protocol, see this example. ::
     # Put key1 v1
     # Delete a
     # Merge xxx value
+
+Column Families
+===============
+
+In RocksDB each key-value pair is associated with exactly one column
+family. By default this is the `default` column family. If you don't
+specify the column family when using the API, then this is the column
+family that will be used.
+
+The following methods support column families:
+
+* :py:meth:`rocksdb.DB.get`
+
+* :py:meth:`rocksdb.DB.put`
+
+* :py:meth:`rocksdb.DB.delete`
+
+* :py:meth:`rocksdb.DB.merge`
+
+* :py:meth:`rocksdb.DB.key_may_exist`
+
+* :py:meth:`rocksdb.DB.iterkeys`
+
+* :py:meth:`rocksdb.DB.itervalues`
+
+* :py:meth:`rocksdb.DB.iteritems`
+
+* :py:meth:`rocksdb.DB.get_property`
+
+* :py:meth:`rocksdb.DB.compact_range`
+
+* :py:meth:`rocksdb.DB.multi_get`
+
+Most of them take a `column_family` keyword argument where the value
+is a :py:class:`rocksdb.ColumnFamilyHandle` object with the name of
+the column family. The :py:meth:`rocksdb.DB.multi_get` takes a
+`column_families` keyword argument which must be a sequence of
+:py:class:`rocksdb.ColumnFamilyHandle` objects.
+
+The :py:meth:`rocksdb.DB.__init__` constructor takes a list of column
+family names that the database should be opened with. If the database
+is opened in read-only mode a subset of the column families can be
+given, otherwise all column families must be specified. Use the
+:py:meth:`rocksdb.list_column_families` function to list the column
+families in a database. New column families can be created using the
+:py:meth:`rocksdb.DB.create_column_family` method.
+
+Example: ::
+
+    opts = rocksdb.Options()
+    opts.create_if_missing = True
+    db = rocksdb.DB('test.db', opts, column_families=[b"default"])
+
+    cf_a = self.db.create_column_family(b"A")
+    
+    db.put(b"k", b"v", column_family=cf_a)
+    
+    # prints b'v'
+    print db.get(b"a", column_family=cf_a)
+
