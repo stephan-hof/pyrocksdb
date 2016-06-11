@@ -731,7 +731,12 @@ cdef class Options(object):
         self.py_row_cache = None
 
         for key, value in kwargs.items():
+            if key == 'prepare_for_bulk_load':
+                continue
             setattr(self, key, value)
+
+        if kwargs.get('prepare_for_bulk_load', False):
+            self.opts.PrepareForBulkLoad()
 
     property create_if_missing:
         def __get__(self):
