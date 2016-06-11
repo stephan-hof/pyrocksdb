@@ -127,6 +127,7 @@ cdef extern from "rocksdb/db.h" namespace "rocksdb":
 
         Status DeleteFile(string) nogil except+
         void GetLiveFilesMetaData(vector[LiveFileMetaData]*) nogil except+
+        Status AddFile(const string&, cpp_bool) nogil except +
 
 
     cdef Status DB_Open "rocksdb::DB::Open"(
