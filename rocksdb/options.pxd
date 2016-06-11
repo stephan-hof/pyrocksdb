@@ -108,6 +108,9 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         size_t inplace_update_num_locks
         shared_ptr[Cache] row_cache
 
+    cdef cppclass ImmutableCFOptions:
+        ImmutableCFOptions(const Options&)
+
     cdef cppclass WriteOptions:
         cpp_bool sync
         cpp_bool disableWAL
