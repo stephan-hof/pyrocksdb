@@ -766,6 +766,33 @@ cdef class EnvOptions(object):
         def __set__(self, value):
             self.env.random_access_max_buffer_size = value
 
+cdef class ColumnFamilyHandle(object):
+    cdef db.ColumnFamilyHandle* handle
+
+    property name:
+        def __get__(self):
+            return self.handle.GetName()
+
+    property id:
+        def __get__(self):
+            return self.handle.GetID()
+
+
+cdef class ColumnFamilyOptions(object):
+    cdef options.ColumnFamilyOptions* opts
+
+    # Used to protect sharing of Options with many DB-objects
+    cdef cpp_bool in_use
+
+    def __cinit__(self):
+        self.opts = NULL
+        self.opts = new options.ColumnFamilyOptions()
+        self.in_use = False
+
+    def __dealloc__(self):
+        if not self.opts == NULL:
+            del self.opts
+
 
 cdef class Options(object):
     cdef options.Options* opts
@@ -861,7 +888,7 @@ cdef class Options(object):
             elif self.opts.compression == options.kLZ4HCCompression:
                 return CompressionType.lz4hc_compression
             else:
-                raise Exception("Unknonw type: %s" % self.opts.compression)
+                raise Exception("Unknown type: %s" % self.opts.compression)
 
         def __set__(self, value):
             if value == CompressionType.no_compression:
@@ -1209,6 +1236,7 @@ cdef class Options(object):
                     raise Exception("Unknown compaction style")
 
     '''
+    # deprecated at rocksdb 4.9.x
     property filter_deletes:
         def __get__(self):
             return self.opts.filter_deletes
@@ -1325,14 +1353,29 @@ cdef class WriteBatch(object):
         if not self.batch == NULL:
             del self.batch
 
-    def put(self, key, value):
-        self.batch.Put(bytes_to_slice(key), bytes_to_slice(value))
+    def put(self, key, value, ColumnFamilyHandle column_family=None):
+        cdef db.ColumnFamilyHandle* cf_handle
+        if column_family is None:
+            self.batch.Put(bytes_to_slice(key), bytes_to_slice(value))
+        else:
+            cf_handle = column_family.handle
+            self.batch.Put(cf_handle, bytes_to_slice(key), bytes_to_slice(value))
 
-    def merge(self, key, value):
-        self.batch.Merge(bytes_to_slice(key), bytes_to_slice(value))
+    def merge(self, key, value, ColumnFamilyHandle column_family=None):
+        cdef db.ColumnFamilyHandle* cf_handle
+        if column_family is None:
+            self.batch.Merge(bytes_to_slice(key), bytes_to_slice(value))
+        else:
+            cf_handle = column_family.handle
+            self.batch.Merge(cf_handle, bytes_to_slice(key), bytes_to_slice(value))
 
-    def delete(self, key):
-        self.batch.Delete(bytes_to_slice(key))
+    def delete(self, key, ColumnFamilyHandle column_family=None):
+        cdef db.ColumnFamilyHandle* cf_handle
+        if column_family is None:
+            self.batch.Delete(bytes_to_slice(key))
+        else:
+            cf_handle = column_family.handle
+            self.batch.Delete(cf_handle, bytes_to_slice(key))
 
     def clear(self):
         self.batch.Clear()
@@ -1392,10 +1435,14 @@ cdef class WriteBatchIterator(object):
 cdef class DB(object):
     cdef Options opts
     cdef db.DB* db
+    cdef dict cf_handles
 
-    def __cinit__(self, db_name, Options opts, read_only=False):
+    def __cinit__(self, db_name, Options opts, column_families=None, read_only=False):
         cdef Status st
         cdef string db_path
+        cdef vector[db.ColumnFamilyDescriptor] column_family_descs
+        cdef vector[db.ColumnFamilyHandle*] column_family_handles
+
         self.db = NULL
         self.opts = None
 
@@ -1403,20 +1450,50 @@ cdef class DB(object):
             raise Exception("Options object is already used by another DB")
 
         db_path = path_to_string(db_name)
-        if read_only:
-            with nogil:
-                st = db.DB_OpenForReadOnly(
-                    deref(opts.opts),
-                    db_path,
-                    cython.address(self.db),
-                    False)
+
+        if column_families is None:
+            if read_only:
+                with nogil:
+                    st = db.DB_OpenForReadOnly(
+                        deref(opts.opts),
+                        db_path,
+                        cython.address(self.db),
+                        False)
+            else:
+                with nogil:
+                    st = db.DB_Open(
+                        deref(opts.opts),
+                        db_path,
+                        cython.address(self.db))
+            check_status(st)
         else:
-            with nogil:
-                st = db.DB_Open(
-                    deref(opts.opts),
-                    db_path,
-                    cython.address(self.db))
-        check_status(st)
+            for column_family_name in column_families:
+              column_family_descs.push_back(db.ColumnFamilyDescriptor(column_family_name, options.ColumnFamilyOptions()))
+
+            if read_only:
+                with nogil:
+                    st = db.DB_OpenForReadOnly_ColumnFamilies(
+                        deref(opts.opts),
+                        db_path,
+                        column_family_descs,
+                        cython.address(column_family_handles),
+                        cython.address(self.db),
+                        False)
+            else:
+                with nogil:
+                    st = db.DB_Open_ColumnFamilies(
+                        deref(opts.opts),
+                        db_path,
+                        column_family_descs,
+                        cython.address(column_family_handles),
+                        cython.address(self.db))
+            check_status(st)
+
+            self.cf_handles = {}
+            for column_family_handle in column_family_handles:
+                cf_handle = ColumnFamilyHandle()
+                cf_handle.handle = column_family_handle
+                self.cf_handles[column_family_handle.GetName()] = cf_handle
 
         # Inject the loggers into the python callbacks
         cdef shared_ptr[logger.Logger] info_log = self.db.GetOptions().info_log
@@ -1434,46 +1511,75 @@ cdef class DB(object):
 
     def __dealloc__(self):
         if not self.db == NULL:
+            self.cf_handles = None
             with nogil:
                 del self.db
 
         if self.opts is not None:
             self.opts.in_use = False
 
-    def put(self, key, value, sync=False, disable_wal=False):
+    property column_family_handles:
+        def __get__(self):
+            return self.cf_handles
+
+    def get_column_family_handle(self, name):
+        return self.cf_handles[name]
+
+    def put(self, key, value, ColumnFamilyHandle column_family=None, sync=False, disable_wal=False):
         cdef Status st
         cdef options.WriteOptions opts
+        cdef db.ColumnFamilyHandle* cf_handle
         opts.sync = sync
         opts.disableWAL = disable_wal
 
         cdef Slice c_key = bytes_to_slice(key)
         cdef Slice c_value = bytes_to_slice(value)
 
-        with nogil:
-            st = self.db.Put(opts, c_key, c_value)
+        if column_family is None:
+            with nogil:
+                st = self.db.Put(opts, c_key, c_value)
+        else:
+            cf_handle = column_family.handle
+            with nogil:
+                st = self.db.Put(opts, cf_handle, c_key, c_value)
         check_status(st)
 
-    def delete(self, key, sync=False, disable_wal=False):
+    def delete(self, key, ColumnFamilyHandle column_family=None, sync=False, disable_wal=False):
         cdef Status st
         cdef options.WriteOptions opts
+        cdef db.ColumnFamilyHandle* cf_handle
         opts.sync = sync
         opts.disableWAL = disable_wal
 
         cdef Slice c_key = bytes_to_slice(key)
-        with nogil:
-            st = self.db.Delete(opts, c_key)
+
+        if column_family is None:
+            with nogil:
+                st = self.db.Delete(opts, c_key)
+        else:
+            cf_handle = column_family.handle
+            with nogil:
+                st = self.db.Delete(opts, cf_handle, c_key)
         check_status(st)
 
-    def merge(self, key, value, sync=False, disable_wal=False):
+    def merge(self, key, value, ColumnFamilyHandle column_family=None, sync=False, disable_wal=False):
         cdef Status st
         cdef options.WriteOptions opts
+        cdef db.ColumnFamilyHandle* cf_handle
         opts.sync = sync
         opts.disableWAL = disable_wal
 
         cdef Slice c_key = bytes_to_slice(key)
         cdef Slice c_value = bytes_to_slice(value)
-        with nogil:
-            st = self.db.Merge(opts, c_key, c_value)
+
+        if column_family is None:
+            with nogil:
+                st = self.db.Merge(opts, c_key, c_value)
+        else:
+            cf_handle = column_family.handle
+            with nogil:
+                st = self.db.Merge(opts, cf_handle, c_key, c_value)
+
         check_status(st)
 
     def write(self, WriteBatch batch, sync=False, disable_wal=False):
@@ -1486,16 +1592,22 @@ cdef class DB(object):
             st = self.db.Write(opts, batch.batch)
         check_status(st)
 
-    def get(self, key, *args, **kwargs):
+    def get(self, key, ColumnFamilyHandle column_family=None, *args, **kwargs):
         cdef string res
         cdef Status st
         cdef options.ReadOptions opts
+        cdef db.ColumnFamilyHandle* cf_handle
 
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
         cdef Slice c_key = bytes_to_slice(key)
 
-        with nogil:
-            st = self.db.Get(opts, c_key, cython.address(res))
+        if column_family is None:
+            with nogil:
+                st = self.db.Get(opts, c_key, cython.address(res))
+        else:
+            cf_handle = column_family.handle
+            with nogil:
+                st = self.db.Get(opts, cf_handle, c_key, cython.address(res))
 
         if st.ok():
             return string_to_bytes(res)
@@ -1504,7 +1616,7 @@ cdef class DB(object):
         else:
             check_status(st)
 
-    def multi_get(self, keys, *args, **kwargs):
+    def multi_get(self, keys, column_families=None, *args, **kwargs):
         cdef vector[string] values
         values.resize(len(keys))
 
@@ -1515,12 +1627,27 @@ cdef class DB(object):
         cdef options.ReadOptions opts
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
 
+        cdef vector[db.ColumnFamilyHandle*] cf_handles
+        cdef db.ColumnFamilyHandle* cf_handle
+        cdef ColumnFamilyHandle column_family
+
         cdef vector[Status] res
-        with nogil:
-            res = self.db.MultiGet(
-                opts,
-                c_keys,
-                cython.address(values))
+        if column_families is None:
+            with nogil:
+                res = self.db.MultiGet(
+                    opts,
+                    c_keys,
+                    cython.address(values))
+        else:
+            for column_family in column_families:
+                cf_handle = column_family.handle
+                cf_handles.push_back(cf_handle)
+            with nogil:
+                res = self.db.MultiGet(
+                    opts,
+                    cf_handles,
+                    c_keys,
+                    cython.address(values))
 
         cdef dict ret_dict = {}
         for index in range(len(keys)):
@@ -1533,7 +1660,7 @@ cdef class DB(object):
 
         return ret_dict
 
-    def key_may_exist(self, key, fetch=False, *args, **kwargs):
+    def key_may_exist(self, key, ColumnFamilyHandle column_family=None, fetch=False, *args, **kwargs):
         cdef string value
         cdef cpp_bool value_found
         cdef cpp_bool exists
@@ -1546,12 +1673,22 @@ cdef class DB(object):
 
         if fetch:
             value_found = False
-            with nogil:
-                exists = self.db.KeyMayExist(
-                    opts,
-                    c_key,
-                    cython.address(value),
-                    cython.address(value_found))
+            if column_family is None:
+                with nogil:
+                    exists = self.db.KeyMayExist(
+                        opts,
+                        c_key,
+                        cython.address(value),
+                        cython.address(value_found))
+            else:
+                cf_handle = column_family.handle
+                with nogil:
+                    exists = self.db.KeyMayExist(
+                        opts,
+                        cf_handle,
+                        c_key,
+                        cython.address(value),
+                        cython.address(value_found))
 
             if exists:
                 if value_found:
@@ -1561,59 +1698,95 @@ cdef class DB(object):
             else:
                 return (False, None)
         else:
-            with nogil:
-                exists = self.db.KeyMayExist(
-                    opts,
-                    c_key,
-                    cython.address(value))
+            if column_family is None:
+                with nogil:
+                    exists = self.db.KeyMayExist(
+                        opts,
+                        c_key,
+                        cython.address(value))
+            else:
+                cf_handle = column_family.handle
+                with nogil:
+                    exists = self.db.KeyMayExist(
+                        opts,
+                        cf_handle,
+                        c_key,
+                        cython.address(value))
 
             return (exists, None)
 
-    def iterkeys(self, *args, **kwargs):
+    def iterkeys(self, ColumnFamilyHandle column_family=None, *args, **kwargs):
         cdef options.ReadOptions opts
+        cdef db.ColumnFamilyHandle* cf_handle
         cdef KeysIterator it
 
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
         it = KeysIterator(self)
 
-        with nogil:
-            it.ptr = self.db.NewIterator(opts)
+        if column_family is None:
+            with nogil:
+                it.ptr = self.db.NewIterator(opts)
+        else:
+            cf_handle = column_family.handle
+            with nogil:
+                it.ptr = self.db.NewIterator(opts, cf_handle)
+
         return it
 
-    def itervalues(self, *args, **kwargs):
+    def itervalues(self, ColumnFamilyHandle column_family=None, *args, **kwargs):
         cdef options.ReadOptions opts
+        cdef db.ColumnFamilyHandle* cf_handle
         cdef ValuesIterator it
 
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
 
         it = ValuesIterator(self)
 
-        with nogil:
-            it.ptr = self.db.NewIterator(opts)
+        if column_family is None:
+            with nogil:
+                it.ptr = self.db.NewIterator(opts)
+        else:
+            cf_handle = column_family.handle
+            with nogil:
+                it.ptr = self.db.NewIterator(opts, cf_handle)
+
         return it
 
-    def iteritems(self, *args, **kwargs):
+    def iteritems(self, ColumnFamilyHandle column_family=None, *args, **kwargs):
         cdef options.ReadOptions opts
+        cdef db.ColumnFamilyHandle* cf_handle
         cdef ItemsIterator it
 
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
 
         it = ItemsIterator(self)
 
-        with nogil:
-            it.ptr = self.db.NewIterator(opts)
+        if column_family is None:
+            with nogil:
+                it.ptr = self.db.NewIterator(opts)
+        else:
+            cf_handle = column_family.handle
+            with nogil:
+                it.ptr = self.db.NewIterator(opts, cf_handle)
+
         return it
 
     def snapshot(self):
         return Snapshot(self)
 
-    def get_property(self, prop):
+    def get_property(self, prop, ColumnFamilyHandle column_family=None):
         cdef string value
         cdef Slice c_prop = bytes_to_slice(prop)
         cdef cpp_bool ret = False
+        cdef db.ColumnFamilyHandle* cf_handle
 
-        with nogil:
-            ret = self.db.GetProperty(c_prop, cython.address(value))
+        if column_family is None:
+            with nogil:
+                ret = self.db.GetProperty(c_prop, cython.address(value))
+        else:
+            cf_handle = column_family.handle
+            with nogil:
+                ret = self.db.GetProperty(cf_handle, c_prop, cython.address(value))
 
         if ret:
             return string_to_bytes(value)
@@ -1641,7 +1814,7 @@ cdef class DB(object):
 
         return ret
 
-    def compact_range(self, begin=None, end=None, **py_options):
+    def compact_range(self, ColumnFamilyHandle column_family=None, begin=None, end=None, **py_options):
         cdef options.CompactRangeOptions c_options
 
         c_options.change_level = py_options.get('change_level', False)
@@ -1675,7 +1848,14 @@ cdef class DB(object):
             end_val = bytes_to_slice(end)
             end_ptr = cython.address(end_val)
 
-        st = self.db.CompactRange(c_options, begin_ptr, end_ptr)
+        if column_family is None:
+            with nogil:
+                st = self.db.CompactRange(c_options, begin_ptr, end_ptr)
+        else:
+            cf_handle = column_family.handle
+            with nogil:
+                st = self.db.CompactRange(c_options, cf_handle, begin_ptr, end_ptr)
+
         check_status(st)
 
     def add_file(self, path, move_file=False):
@@ -1683,6 +1863,32 @@ cdef class DB(object):
         sst_path = bytes_to_string(path)
         st = self.db.AddFile(path, move_file)
         check_status(st)
+
+    def create_column_family(self, name):
+        cdef db.ColumnFamilyHandle* cf_handle
+        cdef Status st
+        cdef options.ColumnFamilyOptions coptions
+
+        coptions = options.ColumnFamilyOptions()
+        st = self.db.CreateColumnFamily(coptions, name, &cf_handle)
+        check_status(st)
+
+        pcf_handle = ColumnFamilyHandle()
+        pcf_handle.handle = cf_handle
+        self.cf_handles[name] = pcf_handle
+        return pcf_handle
+
+    def drop_column_family(self, name):
+        cdef ColumnFamilyHandle pcf_handle
+        cdef db.ColumnFamilyHandle* cf_handle
+        cdef Status st
+
+        pcf_handle = self.cf_handles[name]
+        cf_handle = pcf_handle.handle
+        with nogil:
+           st = self.db.DropColumnFamily(cf_handle)
+        check_status(st)
+        del self.cf_handles[name]
 
     @staticmethod
     def __parse_read_opts(
@@ -1722,6 +1928,21 @@ def repair_db(db_name, Options opts):
     db_path = path_to_string(db_name)
     st = db.RepairDB(db_path, deref(opts.opts))
     check_status(st)
+
+
+def list_column_families(db_name, Options opts):
+    cdef Status st
+    cdef string db_path
+    cdef vector[string] column_families
+
+    db_path = path_to_string(db_name)
+    st = db.ListColumnFamilies(deref(opts.opts), db_path, &column_families)
+    check_status(st)
+
+    ret = []
+    for cf in column_families:
+        ret.append(cf)
+    return ret
 
 
 @cython.no_gc_clear
