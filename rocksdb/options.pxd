@@ -33,6 +33,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         kBlockCacheTier
 
     cdef cppclass Options:
+        Options* PrepareForBulkLoad()
         const Comparator* comparator
         shared_ptr[MergeOperator] merge_operator
         # TODO: compaction_filter
@@ -80,7 +81,6 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         uint64_t max_manifest_file_size
         int table_cache_numshardbits
         size_t arena_block_size
-        # TODO: PrepareForBulkLoad()
         cpp_bool disable_auto_compactions
         uint64_t WAL_ttl_seconds
         uint64_t WAL_size_limit_MB
@@ -108,6 +108,9 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         size_t inplace_update_num_locks
         shared_ptr[Cache] row_cache
 
+    cdef cppclass ImmutableCFOptions:
+        ImmutableCFOptions(const Options&)
+
     cdef cppclass WriteOptions:
         cpp_bool sync
         cpp_bool disableWAL
@@ -131,3 +134,69 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         int target_level
         uint32_t target_path_id
         BottommostLevelCompaction bottommost_level_compaction
+
+    cdef cppclass ColumnFamilyOptions:
+        # const Comparator* comparator
+        # shared_ptr[MergeOperator] merge_operator
+        # # TODO: compaction_filter
+        # # TODO: compaction_filter_factory
+        size_t write_buffer_size
+        # int max_write_buffer_number
+        # int min_write_buffer_number_to_merge
+        # int max_write_buffer_number_to_maintain
+        # CompressionType compression
+        # std::vector<CompressionType> compression_per_level
+        # CompressionOptions compression_opts
+        # std::shared_ptr<const SliceTransform> prefix_extractor
+        # int num_levels
+        # int level0_file_num_compaction_trigger
+        # int level0_slowdown_writes_trigger
+        # int level0_stop_writes_trigger
+        # # int max_mem_compaction_level # DEPRECATED
+        # uint64_t target_file_size_base
+        # int target_file_size_multiplier
+        # uint64_t max_bytes_for_level_base
+        # bool level_compaction_dynamic_level_bytes
+        # int max_bytes_for_level_multiplier
+        # std::vector<int> max_bytes_for_level_multiplier_additional
+        # int expanded_compaction_factor
+        # int source_compaction_factor
+        # int max_grandparent_overlap_factor
+        # double soft_rate_limit
+        # # double hard_rate_limit # DEPRECATED
+        # uint64_t hard_pending_compaction_bytes_limit
+        # # unsigned int rate_limit_delay_max_milliseconds # DEPRECATED
+        # size_t arena_block_size
+        # bool disable_auto_compactions
+        # # bool purge_redundant_kvs_while_flush # DEPRECATED
+        # CompactionStyle compaction_style
+        # CompactionPri compaction_pri
+        # bool verify_checksums_in_compaction
+        # CompactionOptionsUniversal compaction_options_universal
+        # CompactionOptionsFIFO compaction_options_fifo
+        # bool filter_deletes
+        # uint64_t max_sequential_skip_in_iterations
+        # std::shared_ptr<MemTableRepFactory> memtable_factory
+        # std::shared_ptr<TableFactory> table_factory
+        # typedef std::vector<std::shared_ptr<TablePropertiesCollectorFactory>>
+        #     TablePropertiesCollectorFactories
+        # TablePropertiesCollectorFactories table_properties_collector_factories
+        # bool inplace_update_support
+        # size_t inplace_update_num_locks
+        # UpdateStatus (*inplace_callback)(char* existing_value,
+        #                                  uint32_t* existing_value_size,
+        #                                  Slice delta_value,
+        #                                  std::string* merged_value)
+        # uint32_t memtable_prefix_bloom_bits
+        # uint32_t memtable_prefix_bloom_probes
+        # size_t memtable_prefix_bloom_huge_page_tlb_size
+        # uint32_t bloom_locality
+        # size_t max_successive_merges
+        # uint32_t min_partial_merge_operands
+        # bool optimize_filters_for_hits
+        # bool paranoid_file_checks
+        # bool compaction_measure_io_stats
+
+
+
+

@@ -5,8 +5,10 @@ import unittest
 import rocksdb
 from itertools import takewhile
 
+
 def int_to_bytes(ob):
     return str(ob).encode('ascii')
+
 
 class TestHelper(object):
     def _clean(self):
@@ -87,23 +89,22 @@ class TestDB(unittest.TestCase, TestHelper):
         it = iter(batch)
         del batch
         ref = [
-            ('Put', 'key1', 'v1'),
-            ('Put', 'key2', 'v2'),
-            ('Put', 'key3', 'v3'),
-            ('Delete', 'a', ''),
-            ('Delete', 'key1', ''),
-            ('Merge', 'xxx', 'value')
+            ('Put', b'key1', b'v1'),
+            ('Put', b'key2', b'v2'),
+            ('Put', b'key3', b'v3'),
+            ('Delete', b'a', b''),
+            ('Delete', b'key1', b''),
+            ('Merge', b'xxx', b'value')
         ]
         self.assertEqual(ref, list(it))
-
 
     def test_key_may_exists(self):
         self.db.put(b"a", b'1')
 
         self.assertEqual((False, None), self.db.key_may_exist(b"x"))
-        self.assertEqual((False, None), self.db.key_may_exist(b'x', True))
+        self.assertEqual((False, None), self.db.key_may_exist(b'x', fetch=True))
         self.assertEqual((True, None), self.db.key_may_exist(b'a'))
-        self.assertEqual((True, b'1'), self.db.key_may_exist(b'a', True))
+        self.assertEqual((True, b'1'), self.db.key_may_exist(b'a', fetch=True))
 
     def test_iter_keys(self):
         for x in range(300):
@@ -312,6 +313,7 @@ class TestComparator(unittest.TestCase, TestHelper):
 
         self.assertEqual(b'300', self.db.get(b'300'))
 
+
 class StaticPrefix(rocksdb.interfaces.SliceTransform):
     def name(self):
         return b'static'
@@ -324,6 +326,7 @@ class StaticPrefix(rocksdb.interfaces.SliceTransform):
 
     def in_range(self, dst):
         return len(dst) == 5
+
 
 class TestPrefixExtractor(unittest.TestCase, TestHelper):
     def setUp(self):
@@ -343,7 +346,6 @@ class TestPrefixExtractor(unittest.TestCase, TestHelper):
             self.db.put(keyx, b'x')
             self.db.put(keyy, b'y')
             self.db.put(keyz, b'z')
-
 
     def test_prefix_iterkeys(self):
         self._fill_db()
@@ -367,3 +369,232 @@ class TestPrefixExtractor(unittest.TestCase, TestHelper):
         ref = {b'00002.z': b'z', b'00002.y': b'y', b'00002.x': b'x'}
         ret = takewhile(lambda item: item[0].startswith(b'00002'), it)
         self.assertEqual(ref, dict(ret))
+
+
+class TestSstFileWriter(unittest.TestCase, TestHelper):
+    def setUp(self):
+        opts = rocksdb.Options(create_if_missing=True)
+        self._clean()
+        self.db = rocksdb.DB("/tmp/test", opts)
+
+    def tearDown(self):
+        self._close_db()
+
+    def test_ordered_exception(self):
+        writer = rocksdb.SstFileWriter('/tmp/test/test.sst_',
+                                       rocksdb.Options(create_if_missing=True),
+                                       rocksdb.EnvOptions())
+        keyvals = []
+        for x in range(300):
+            keyvals.append((int_to_bytes(x), int_to_bytes(x * 1000)))
+        expected = 'Keys must be added in order'
+        with self.assertRaisesRegexp(Exception, expected):
+            for key, val in keyvals:
+                writer.add(key, val)
+        writer.finish()
+
+    def test_add_and_injection(self):
+        writer = rocksdb.SstFileWriter('/tmp/test/test2.sst_',
+                                       rocksdb.Options(create_if_missing=True),
+                                       rocksdb.EnvOptions())
+        keyvals = []
+        for x in range(300):
+            keyvals.append((int_to_bytes(x), int_to_bytes(x * 1000)))
+        keyvals.sort(key=lambda x: x[0])
+        for key, val in keyvals:
+            writer.add(key, val)
+        writer.finish()
+
+        self.db.add_file('/tmp/test/test2.sst_')
+        for key, val in keyvals:
+            self.assertEqual(self.db.get(key), val)
+
+
+class TestDBColumnFamilies(unittest.TestCase, TestHelper):
+    def setUp(self):
+        opts = rocksdb.Options(create_if_missing=True)
+        self._clean()
+        self.db = rocksdb.DB("/tmp/test", opts, column_families=[b"default"])
+        self.cf_a = self.db.create_column_family(b"A")
+        self.cf_b = self.db.create_column_family(b"B")
+
+    def tearDown(self):
+        self._close_db()
+
+    def test_get_none(self):
+        self.assertIsNone(self.db.get(b'k'))
+        self.assertIsNone(self.db.get(b"k", column_family=self.cf_a))
+        self.assertIsNone(self.db.get(b"k", column_family=self.cf_b))
+
+    def test_put_get(self):
+        self.db.put(b"k", b"v", column_family=self.cf_a)
+        self.assertEqual(b"v", self.db.get(b"k", column_family=self.cf_a))
+        self.assertIsNone(self.db.get(b"k"))
+        self.assertIsNone(self.db.get(b"k", column_family=self.cf_b))
+
+    def test_multi_get(self):
+        self.db.put(b"a", b"1", column_family=self.cf_a)
+        self.db.put(b"b", b"2", column_family=self.cf_a)
+        self.db.put(b"c", b"3", column_family=self.cf_a)
+
+        column_families = [self.cf_a, self.cf_a, self.cf_a]
+        ret = self.db.multi_get([b'a', b'b', b'c'],
+                                column_families=column_families)
+        ref = {b'a': b'1', b'c': b'3', b'b': b'2'}
+        self.assertEqual(ref, ret)
+
+    def test_delete(self):
+        self.db.put(b"a", b"b", column_family=self.cf_a)
+        self.assertEqual(b"b", self.db.get(b"a", column_family=self.cf_a))
+        self.db.delete(b"a", column_family=self.cf_a)
+        self.assertIsNone(self.db.get(b"a", column_family=self.cf_a))
+
+    def test_write_batch(self):
+        batch = rocksdb.WriteBatch()
+        batch.put(b"key", b"v1", column_family=self.cf_a)
+        batch.delete(b"key", column_family=self.cf_a)
+        batch.put(b"key", b"v2", column_family=self.cf_a)
+        batch.put(b"key", b"v3", column_family=self.cf_a)
+        batch.put(b"a", b"1", column_family=self.cf_a)
+        batch.put(b"b", b"2", column_family=self.cf_b)
+
+        self.db.write(batch)
+        self.assertEqual(b"v3", self.db.get(b"key", column_family=self.cf_a))
+        self.assertEqual(b"1", self.db.get(b"a", column_family=self.cf_a))
+        self.assertEqual(b"2", self.db.get(b"b", column_family=self.cf_b))
+
+    def test_key_may_exists(self):
+        self.db.put(b"a", b'1', column_family=self.cf_a)
+
+        self.assertEqual((False, None),
+                         self.db.key_may_exist(b"x",
+                                               column_family=self.cf_a))
+        self.assertEqual((False, None),
+                         self.db.key_may_exist(b'x', fetch=True,
+                                               column_family=self.cf_a))
+        self.assertEqual((True, None),
+                         self.db.key_may_exist(b'a',
+                                               column_family=self.cf_a))
+        self.assertEqual((True, b'1'),
+                         self.db.key_may_exist(b'a', fetch=True,
+                                               column_family=self.cf_a))
+
+    def test_iter_keys(self):
+        for x in range(300):
+            self.db.put(int_to_bytes(x), int_to_bytes(x),
+                        column_family=self.cf_a)
+
+        it = self.db.iterkeys(column_family=self.cf_a)
+
+        self.assertEqual([], list(it))
+
+        it.seek_to_last()
+        self.assertEqual([b'99'], list(it))
+
+        ref = sorted([int_to_bytes(x) for x in range(300)])
+        it.seek_to_first()
+        self.assertEqual(ref, list(it))
+
+        it.seek(b'90')
+        ref = [
+            b'90',
+            b'91',
+            b'92',
+            b'93',
+            b'94',
+            b'95',
+            b'96',
+            b'97',
+            b'98',
+            b'99'
+        ]
+        self.assertEqual(ref, list(it))
+
+    def test_iter_values(self):
+        for x in range(300):
+            self.db.put(int_to_bytes(x), int_to_bytes(x * 1000),
+                        column_family=self.cf_a)
+
+        it = self.db.itervalues(column_family=self.cf_a)
+
+        self.assertEqual([], list(it))
+
+        it.seek_to_last()
+        self.assertEqual([b'99000'], list(it))
+
+        ref = sorted([int_to_bytes(x) for x in range(300)])
+        ref = [int_to_bytes(int(x) * 1000) for x in ref]
+        it.seek_to_first()
+        self.assertEqual(ref, list(it))
+
+        it.seek(b'90')
+        ref = [int_to_bytes(x * 1000) for x in range(90, 100)]
+        self.assertEqual(ref, list(it))
+
+    def test_iter_items(self):
+        for x in range(300):
+            self.db.put(int_to_bytes(x), int_to_bytes(x * 1000),
+                        column_family=self.cf_a)
+
+        it = self.db.iteritems(column_family=self.cf_a)
+
+        self.assertEqual([], list(it))
+
+        it.seek_to_last()
+        self.assertEqual([(b'99', b'99000')], list(it))
+
+        ref = sorted([int_to_bytes(x) for x in range(300)])
+        ref = [(x, int_to_bytes(int(x) * 1000)) for x in ref]
+        it.seek_to_first()
+        self.assertEqual(ref, list(it))
+
+        it.seek(b'90')
+        ref = [(int_to_bytes(x), int_to_bytes(x * 1000)) for x in range(90, 100)]
+        self.assertEqual(ref, list(it))
+
+    def test_reverse_iter(self):
+        for x in range(100):
+            self.db.put(int_to_bytes(x), int_to_bytes(x * 1000),
+                        column_family=self.cf_a)
+
+        it = self.db.iteritems(column_family=self.cf_a)
+        it.seek_to_last()
+
+        ref = reversed(sorted([int_to_bytes(x) for x in range(100)]))
+        ref = [(x, int_to_bytes(int(x) * 1000)) for x in ref]
+
+        self.assertEqual(ref, list(reversed(it)))
+
+    def test_snapshot(self):
+        self.db.put(b"a", b"1", column_family=self.cf_a)
+        self.db.put(b"b", b"2", column_family=self.cf_a)
+
+        snapshot = self.db.snapshot()
+        self.db.put(b"a", b"2", column_family=self.cf_a)
+        self.db.delete(b"b", column_family=self.cf_a)
+
+        it = self.db.iteritems(column_family=self.cf_a)
+        it.seek_to_first()
+        self.assertEqual({b'a': b'2'}, dict(it))
+
+        it = self.db.iteritems(snapshot=snapshot, column_family=self.cf_a)
+        it.seek_to_first()
+        self.assertEqual({b'a': b'1', b'b': b'2'}, dict(it))
+
+    def test_get_property(self):
+        for x in range(300):
+            x = int_to_bytes(x)
+            self.db.put(x, x, column_family=self.cf_a)
+
+        self.assertEqual(b"300",
+                         self.db.get_property(b'rocksdb.estimate-num-keys',
+                                              column_family=self.cf_a))
+        self.assertIsNone(self.db.get_property(b'does not exsits',
+                                               column_family=self.cf_a))
+
+    def test_compact_range(self):
+        for x in range(10000):
+            x = int_to_bytes(x)
+            self.db.put(x, x, column_family=self.cf_a)
+
+        self.db.compact_range(column_family=self.cf_a)
