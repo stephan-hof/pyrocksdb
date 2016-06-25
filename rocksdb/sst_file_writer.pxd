@@ -22,7 +22,7 @@ cdef extern from "rocksdb/sst_file_writer.h" namespace "rocksdb":
         int32_t version
 
     cdef cppclass SstFileWriter:
-        SstFileWriter(const EnvOptions&, const Options&, const Comparator*) nogil except+
+        SstFileWriter(const EnvOptions&, const ImmutableCFOptions&, const Comparator*) nogil except+
         Status Open(string) nogil except+
         Status Add(const Slice&, const Slice&) nogil except+
         Status Finish(ExternalSstFileInfo*) nogil except+

@@ -1970,7 +1970,7 @@ cdef class SstFileWriter(object):
 
         writer = new sst_file_writer.SstFileWriter(
                 env.env,
-                deref(opts.opts),
+                options.ImmutableCFOptions(deref(opts.opts)),
                 opts.opts.comparator)
 
         file_path = path_to_string(path)
