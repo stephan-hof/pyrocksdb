@@ -5,6 +5,8 @@ Version 0.5
 -----------
 
 * Added support for column families.
+* Added SstFileWriter
+* Tested with RocksDB 4.6.1
 
 Version 0.4
 -----------
