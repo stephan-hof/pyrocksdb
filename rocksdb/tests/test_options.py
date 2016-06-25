@@ -102,3 +102,8 @@ class TestOptions(unittest.TestCase):
         self.assertIsNone(opts.row_cache)
         opts.row_cache = cache = rocksdb.LRUCache(2*1024*1024)
         self.assertEqual(cache, opts.row_cache)
+
+    def test_prepare_for_bulk_load(self):
+        opts = rocksdb.Options(prepare_for_bulk_load=True, num_levels=4)
+        self.assertEqual(opts.disable_auto_compactions, True)
+        self.assertEqual(opts.num_levels, 2)  # rocksdb 4.9

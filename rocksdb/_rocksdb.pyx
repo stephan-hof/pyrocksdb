@@ -28,6 +28,8 @@ cimport env
 cimport table_factory
 cimport memtablerep
 cimport universal_compaction
+cimport sst_file_writer
+cimport env
 
 # Enums are the only exception for direct imports
 # Their name als already unique enough
@@ -701,6 +703,70 @@ cdef class CompressionType(object):
     lz4_compression = u'lz4_compression'
     lz4hc_compression = u'lz4hc_compression'
 
+
+
+cdef class EnvOptions(object):
+    cdef env.EnvOptions env
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    property use_os_buffer:
+        def __get__(self):
+            return self.env.use_os_buffer
+        def __set__(self, value):
+            self.env.use_os_buffer = value
+
+    property use_mmap_reads:
+        def __get__(self):
+            return self.env.use_mmap_reads
+        def __set__(self, value):
+            self.env.use_mmap_reads = value
+
+    property use_mmap_writes:
+        def __get__(self):
+            return self.env.use_mmap_writes
+        def __set__(self, value):
+            self.env.use_mmap_writes = value
+
+    property allow_fallocate:
+        def __get__(self):
+            return self.env.allow_fallocate
+        def __set__(self, value):
+            self.env.allow_fallocate = value
+
+    property set_fd_cloexec:
+        def __get__(self):
+            return self.env.set_fd_cloexec
+        def __set__(self, value):
+            self.env.set_fd_cloexec = value
+
+    property bytes_per_sync:
+        def __get__(self):
+            return self.env.bytes_per_sync
+        def __set__(self, value):
+            self.env.bytes_per_sync = value
+
+    property fallocate_with_keep_size:
+        def __get__(self):
+            return self.env.fallocate_with_keep_size
+        def __set__(self, value):
+            self.env.fallocate_with_keep_size = value
+
+    property compaction_readahead_size:
+        def __get__(self):
+            return self.env.compaction_readahead_size
+        def __set__(self, value):
+            self.env.compaction_readahead_size = value
+
+    property random_access_max_buffer_size:
+        def __get__(self):
+            return self.env.random_access_max_buffer_size
+        def __set__(self, value):
+            self.env.random_access_max_buffer_size = value
+
+
 cdef class Options(object):
     cdef options.Options* opts
     cdef PyComparator py_comparator
@@ -731,7 +797,12 @@ cdef class Options(object):
         self.py_row_cache = None
 
         for key, value in kwargs.items():
+            if key == 'prepare_for_bulk_load':
+                continue
             setattr(self, key, value)
+
+        if kwargs.get('prepare_for_bulk_load', False):
+            self.opts.PrepareForBulkLoad()
 
     property create_if_missing:
         def __get__(self):
@@ -1137,11 +1208,13 @@ cdef class Options(object):
                 else:
                     raise Exception("Unknown compaction style")
 
+    '''
     property filter_deletes:
         def __get__(self):
             return self.opts.filter_deletes
         def __set__(self, value):
             self.opts.filter_deletes = value
+    '''
 
     property max_sequential_skip_in_iterations:
         def __get__(self):
@@ -1605,6 +1678,12 @@ cdef class DB(object):
         st = self.db.CompactRange(c_options, begin_ptr, end_ptr)
         check_status(st)
 
+    def add_file(self, path, move_file=False):
+        cdef string sst_path
+        sst_path = bytes_to_string(path)
+        st = self.db.AddFile(path, move_file)
+        check_status(st)
+
     @staticmethod
     def __parse_read_opts(
         verify_checksums=False,
@@ -1874,3 +1953,54 @@ cdef class BackupEngine(object):
             ret.append(t)
 
         return ret
+
+
+@cython.no_gc_clear
+cdef class SstFileWriter(object):
+    cdef Options opts
+    cdef EnvOptions env
+    cdef sst_file_writer.SstFileWriter* writer
+
+    def __cinit__(self, path, Options opts, EnvOptions env):
+        cdef Status st
+        cdef string file_path
+        cdef sst_file_writer.SstFileWriter* writer
+        self.writer = NULL
+        self.opts = None
+
+        writer = new sst_file_writer.SstFileWriter(
+                env.env,
+                deref(opts.opts),
+                opts.opts.comparator)
+
+        file_path = path_to_string(path)
+        st = writer.Open(file_path)
+        check_status(st)
+
+        self.opts = opts
+        self.env = env
+        self.opts.in_use = True
+        self.writer = writer
+
+    def __dealloc__(self):
+        if not self.writer == NULL:
+            with nogil:
+                del self.writer
+                self.writer = NULL
+
+        if self.opts is not None:
+            self.opts.in_use = False
+
+    def add(self, key, value):
+        cdef Status st
+        cdef Slice c_key = bytes_to_slice(key)
+        cdef Slice c_value = bytes_to_slice(value)
+
+        with nogil:
+            st = self.writer.Add(c_key, c_value)
+        check_status(st)
+
+    def finish(self):
+        cdef Status st
+        st = self.writer.Finish(NULL)
+        check_status(st)
