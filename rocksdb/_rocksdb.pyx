@@ -1208,11 +1208,13 @@ cdef class Options(object):
                 else:
                     raise Exception("Unknown compaction style")
 
+    '''
     property filter_deletes:
         def __get__(self):
             return self.opts.filter_deletes
         def __set__(self, value):
             self.opts.filter_deletes = value
+    '''
 
     property max_sequential_skip_in_iterations:
         def __get__(self):
@@ -1968,7 +1970,7 @@ cdef class SstFileWriter(object):
 
         writer = new sst_file_writer.SstFileWriter(
                 env.env,
-                options.ImmutableCFOptions(deref(opts.opts)),
+                deref(opts.opts),
                 opts.opts.comparator)
 
         file_path = path_to_string(path)
