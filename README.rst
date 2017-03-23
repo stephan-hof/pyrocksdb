@@ -1,3 +1,8 @@
+Note
+=========
+The original pyrocksdb has not been updated for long time. I update the pyrocksdb to support the latest rocksdb. Please open the issues in github if you have any problem.
+
+
 pyrocksdb
 =========
 
