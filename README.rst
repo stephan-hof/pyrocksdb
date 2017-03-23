@@ -20,8 +20,9 @@ Quick install for debian/ubuntu like linux distributions.
     $ apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
     $ git clone https://github.com/facebook/rocksdb.git
     $ cd rocksdb
-    $ make shared_lib
-    $ export CPLUS_INCLUDE_PATH=${CPLUS_INCLUDE_PATH}:`pwd`/include
+    $ make build && cd build
+    $ cmake ..
+    $ export CPLUS_INCLUDE_PATH=${CPLUS_INCLUDE_PATH}:`pwd`/../include
     $ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:`pwd`
     $ export LIBRARY_PATH=${LIBRARY_PATH}:`pwd`
 
@@ -30,7 +31,7 @@ Quick install for debian/ubuntu like linux distributions.
     $ virtualenv pyrocks_test
     $ cd pyrocks_test
     $ . bin/active
-    $ pip install pyrocksdb
+    $ pip install python-rocksdb
 
 
 Quick Usage Guide
