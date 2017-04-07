@@ -19,6 +19,8 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
     ctypedef enum CompactionStyle:
         kCompactionStyleLevel
         kCompactionStyleUniversal
+        kCompactionStyleFIFO
+        kCompactionStyleNone
 
     ctypedef enum CompressionType:
         kNoCompression
@@ -27,10 +29,20 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         kBZip2Compression
         kLZ4Compression
         kLZ4HCCompression
+        kXpressCompression
+        kZSTD
+        kZSTDNotFinalCompression
+        kDisableCompressionOption
 
     ctypedef enum ReadTier:
         kReadAllTier
         kBlockCacheTier
+
+    ctypedef enum CompactionPri:
+        kByCompensatedSize
+        kOldestLargestSeqFirst
+        kOldestSmallestSeqFirst
+        kMinOverlappingRatio
 
     cdef cppclass Options:
         const Comparator* comparator
@@ -47,6 +59,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         int min_write_buffer_number_to_merge
         int max_open_files
         CompressionType compression
+        CompactionPri compaction_pri
         # TODO: compression_per_level
         # TODO: compression_opts
         shared_ptr[SliceTransform] prefix_extractor
@@ -58,7 +71,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         uint64_t target_file_size_base
         int target_file_size_multiplier
         uint64_t max_bytes_for_level_base
-        int max_bytes_for_level_multiplier
+        double max_bytes_for_level_multiplier
         vector[int] max_bytes_for_level_multiplier_additional
         int expanded_compaction_factor
         int source_compaction_factor
@@ -107,6 +120,8 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         cpp_bool inplace_update_support
         size_t inplace_update_num_locks
         shared_ptr[Cache] row_cache
+        # TODO: remove options source_compaction_factor, max_grandparent_overlap_bytes and expanded_compaction_factor from document
+        uint64_t max_compaction_bytes;
 
     cdef cppclass WriteOptions:
         cpp_bool sync

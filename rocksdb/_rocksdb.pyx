@@ -36,6 +36,8 @@ from universal_compaction cimport kCompactionStopStyleTotalSize
 
 from options cimport kCompactionStyleLevel
 from options cimport kCompactionStyleUniversal
+from options cimport kCompactionStyleFIFO
+from options cimport kCompactionStyleNone
 
 from slice_ cimport Slice
 from status cimport Status
@@ -700,6 +702,10 @@ cdef class CompressionType(object):
     bzip2_compression = u'bzip2_compression'
     lz4_compression = u'lz4_compression'
     lz4hc_compression = u'lz4hc_compression'
+    xpress_compression = u'xpress_compression'
+    zstd_compression = u'zstd_compression'
+    zstdnotfinal_compression = u'zstdnotfinal_compression'
+    disable_compression = u'disable_compression'
 
 cdef class Options(object):
     cdef options.Options* opts
@@ -763,6 +769,12 @@ cdef class Options(object):
         def __set__(self, value):
             self.opts.max_write_buffer_number = value
 
+    property max_compaction_bytes:
+        def __get__(self):
+            return self.opts.max_compaction_bytes
+        def __set__(self, value):
+            self.opts.max_compaction_bytes = value
+
     property min_write_buffer_number_to_merge:
         def __get__(self):
             return self.opts.min_write_buffer_number_to_merge
@@ -789,6 +801,14 @@ cdef class Options(object):
                 return CompressionType.lz4_compression
             elif self.opts.compression == options.kLZ4HCCompression:
                 return CompressionType.lz4hc_compression
+            elif self.opts.compression == options.kXpressCompression:
+                return CompressionType.xpress_compression
+            elif self.opts.compression == options.kZSTD:
+                return CompressionType.zstd_compression
+            elif self.opts.compression == options.kZSTDNotFinalCompression:
+                return CompressionType.zstdnotfinal_compression
+            elif self.opts.compression == options.kDisableCompressionOption:
+                return CompressionType.disable_compression
             else:
                 raise Exception("Unknonw type: %s" % self.opts.compression)
 
@@ -805,6 +825,12 @@ cdef class Options(object):
                 self.opts.compression = options.kLZ4Compression
             elif value == CompressionType.lz4hc_compression:
                 self.opts.compression = options.kLZ4HCCompression
+            elif value == CompressionType.zstd_compression:
+                self.opts.compression = options.kZSTD
+            elif value == CompressionType.zstdnotfinal_compression:
+                self.opts.compression = options.kZSTDNotFinalCompression
+            elif value == CompressionType.disable_compression:
+                self.opts.compression = options.kDisableCompressionOption
             else:
                 raise TypeError("Unknown compression: %s" % value)
 
@@ -1049,6 +1075,10 @@ cdef class Options(object):
                 return 'level'
             if self.opts.compaction_style == kCompactionStyleUniversal:
                 return 'universal'
+            if self.opts.compaction_style == kCompactionStyleFIFO:
+                return 'fifo'
+            if self.opts.compaction_style == kCompactionStyleNone:
+                return 'none'
             raise Exception("Unknown compaction_style")
 
         def __set__(self, str value):
@@ -1056,6 +1086,10 @@ cdef class Options(object):
                 self.opts.compaction_style = kCompactionStyleLevel
             elif value == 'universal':
                 self.opts.compaction_style = kCompactionStyleUniversal
+            elif value == 'fifo':
+                self.opts.compaction_style = kCompactionStyleFIFO
+            elif value == 'none':
+                self.opts.compaction_style = kCompactionStyleNone
             else:
                 raise Exception("Unknown compaction style")
 
