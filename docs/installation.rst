@@ -11,12 +11,11 @@ For more details consider https://github.com/facebook/rocksdb/blob/master/INSTAL
 
 .. code-block:: bash
 
-    apt-get install build-essential
-    apt-get install libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
+    apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
     git clone https://github.com/facebook/rocksdb.git
     cd rocksdb
-    make shared_lib
-
+    make build && cd build
+    cmake ..
 
 Systemwide rocksdb
 ^^^^^^^^^^^^^^^^^^
@@ -37,10 +36,9 @@ These varialbes are picked up by the compiler, linker and loader
 
 .. code-block:: bash
 
-    export CPLUS_INCLUDE_PATH=${CPLUS_INCLUDE_PATH}:`pwd`/include
+    export CPLUS_INCLUDE_PATH=${CPLUS_INCLUDE_PATH}:`pwd`/../include:`pwd`/../
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:`pwd`
     export LIBRARY_PATH=${LIBRARY_PATH}:`pwd`
-
 
 Building pyrocksdb
 ------------------
