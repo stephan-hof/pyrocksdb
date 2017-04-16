@@ -215,47 +215,14 @@ Options object
         | *Type:* ``[int]``
         | *Default:* ``[1, 1, 1, 1, 1, 1, 1]``
 
-    .. py:attribute:: expanded_compaction_factor
+    .. py:attribute:: max_compaction_bytes
 
-        Maximum number of bytes in all compacted files. We avoid expanding
-        the lower level file set of a compaction if it would make the
-        total compaction cover more than
-        (expanded_compaction_factor * targetFileSizeLevel()) many bytes.
+        We try to limit number of bytes in one compaction to be lower than this
+        threshold. But it's not guaranteed.
+        Value 0 will be sanitized.
         
         | *Type:* ``int``
-        | *Default:* ``25``
-
-    .. py:attribute:: source_compaction_factor
-
-        Maximum number of bytes in all source files to be compacted in a
-        single compaction run. We avoid picking too many files in the
-        source level so that we do not exceed the total source bytes
-        for compaction to exceed
-        (source_compaction_factor * targetFileSizeLevel()) many bytes.
-        If 1 pick maxfilesize amount of data as the source of
-        a compaction.
-
-        | *Type:* ``int``
-        | *Default:* ``1``
-
-    .. py:attribute:: max_grandparent_overlap_factor
-
-        Control maximum bytes of overlaps in grandparent (i.e., level+2) before we
-        stop building a single file in a level->level+1 compaction.
-
-        | *Type:* ``int``
-        | *Default:* ``10``
-
-    .. py:attribute:: disable_data_sync
-
-        If true, then the contents of data files are not synced
-        to stable storage. Their contents remain in the OS buffers till the
-        OS decides to flush them. This option is good for bulk-loading
-        of data. Once the bulk-loading is complete, please issue a
-        sync to the OS to flush all dirty buffesrs to stable storage.
-
-        | *Type:* ``bool``
-        | *Default:* ``False``
+        | *Default:* ``target_file_size_base * 25``
 
     .. py:attribute:: use_fsync
 
@@ -447,12 +414,6 @@ Options object
         | *Type:* ``bool``
         | *Default:* ``True``
 
-    .. py:attribute:: allow_os_buffer
-
-        Data being read from file storage may be buffered in the OS
-
-        | *Type:* ``bool``
-        | *Default:* ``True``
 
     .. py:attribute:: allow_mmap_reads
 
@@ -517,21 +478,23 @@ Options object
         | *Type:* ``int``
         | *Default:* ``0``
 
-    .. py:attribute:: verify_checksums_in_compaction
-
-        If ``True``, compaction will verify checksum on every read that
-        happens as part of compaction.
-
-        | *Type:* ``bool``
-        | *Default:* ``True``
 
     .. py:attribute:: compaction_style
 
         The compaction style. Could be set to ``"level"`` to use level-style
-        compaction. For universal-style compaction use ``"universal"``.
+        compaction. For universal-style compaction use ``"universal"``. For
+        FIFO compaction use ``"fifo"``. If no compaction style use ``"none"``.
 
         | *Type:* ``string``
         | *Default:* ``level``
+
+    .. py:attribute:: compaction_pri
+
+        If level compaction_style = kCompactionStyleLevel, for each level,
+        which files are prioritized to be picked to compact.
+
+        | *Type:* Member of :py:class:`rocksdb.CompactionPri`
+        | *Default:* :py:attr:`rocksdb.CompactionPri.kByCompensatedSize`
 
     .. py:attribute:: compaction_options_universal
 
@@ -603,15 +566,6 @@ Options object
             opts = rocksdb.Options()
             opts.compaction_options_universal = {'stop_style': 'similar_size'}
 
-    .. py:attribute:: filter_deletes
-
-        Use KeyMayExist API to filter deletes when this is true.
-        If KeyMayExist returns false, i.e. the key definitely does not exist, then
-        the delete is a noop. KeyMayExist only incurs in-memory look up.
-        This optimization avoids writing the delete to storage when appropriate.
-         
-        | *Type:* ``bool``
-        | *Default:* ``False``
 
     .. py:attribute:: max_sequential_skip_in_iterations
 
@@ -726,6 +680,18 @@ Options object
         *Default:* ``None``
 
 
+CompactionPri
+================
+
+.. py:class:: rocksdb.CompactionPri
+
+    Defines the support compression types
+
+    .. py:attribute:: kByCompensatedSize
+    .. py:attribute:: kOldestLargestSeqFirst
+    .. py:attribute:: kOldestSmallestSeqFirst
+    .. py:attribute:: kMinOverlappingRatio
+
 CompressionTypes
 ================
 
@@ -739,6 +705,10 @@ CompressionTypes
     .. py:attribute:: bzip2_compression
     .. py:attribute:: lz4_compression
     .. py:attribute:: lz4hc_compression
+    .. py:attribute:: xpress_compression
+    .. py:attribute:: zstd_compression
+    .. py:attribute:: zstdnotfinal_compression
+    .. py:attribute:: disable_compression
 
 BytewiseComparator
 ==================

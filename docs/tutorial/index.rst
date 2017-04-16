@@ -1,4 +1,4 @@
-Basic Usage of pyrocksdb
+Basic Usage of python-rocksdb
 ************************
 
 Open
@@ -196,6 +196,21 @@ The following example python merge operator implements a counter ::
 
     # prints b'2'
     print db.get(b"a")
+
+We provide a set of default operators ``uintadd64``, ``put`` and ``stringappend``
+
+The following example using ``uintadd64`` where each operand is ``uint64`` ::
+
+    import rocksdb
+    import struct
+    opts = rocksdb.Options()
+    opts.create_if_missing = True
+    opts.merge_operator = 'uint64add'
+    db = rocksdb.DB("test.db", opts)
+    # since every operand is uint64, you need to pack it into string
+    db.put(b'a', struct.pack('Q', 1000))
+    db.merge(b'a', struct.pack('Q', 2000))
+    assert struct.unpack('Q', db.get(b'a'))[0] == 3000
 
 PrefixExtractor
 ===============

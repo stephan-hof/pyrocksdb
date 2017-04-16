@@ -1,4 +1,4 @@
-Welcome to pyrocksdb's documentation!
+Welcome to python-rocksdb's documentation!
 =====================================
 
 Overview
@@ -11,7 +11,7 @@ Python bindings to the C++ interface of http://rocksdb.org/ using cython::
     print db.get(b"a")
 
 
-Tested with python2.7 and python3.4 and RocksDB version 3.12
+Tested with python2.7 and python3.4 and RocksDB version 5.3.0
 
 .. toctree::
     :maxdepth: 2
