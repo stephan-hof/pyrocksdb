@@ -16,6 +16,14 @@ from universal_compaction cimport CompactionOptionsUniversal
 from cache cimport Cache
 
 cdef extern from "rocksdb/options.h" namespace "rocksdb":
+    cdef cppclass CompressionOptions:
+        int window_bits;
+        int level;
+        int strategy;
+        uint32_t max_dict_bytes
+        CompressionOptions() except +
+        CompressionOptions(int, int, int, int) except +
+
     ctypedef enum CompactionStyle:
         kCompactionStyleLevel
         kCompactionStyleUniversal
@@ -61,7 +69,6 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         CompressionType compression
         CompactionPri compaction_pri
         # TODO: compression_per_level
-        # TODO: compression_opts
         shared_ptr[SliceTransform] prefix_extractor
         int num_levels
         int level0_file_num_compaction_trigger
@@ -121,7 +128,8 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         size_t inplace_update_num_locks
         shared_ptr[Cache] row_cache
         # TODO: remove options source_compaction_factor, max_grandparent_overlap_bytes and expanded_compaction_factor from document
-        uint64_t max_compaction_bytes;
+        uint64_t max_compaction_bytes
+        CompressionOptions compression_opts
 
     cdef cppclass WriteOptions:
         cpp_bool sync

@@ -318,8 +318,8 @@ cdef class PyMergeOperator(object):
     cdef object ob
 
     def __cinit__(self, object ob):
+        self.ob = ob
         if isinstance(ob, IAssociativeMergeOperator):
-            self.ob = ob
             self.merge_op.reset(
                 <merge_operator.MergeOperator*>
                     new merge_operator.AssociativeMergeOperatorWrapper(
@@ -328,7 +328,6 @@ cdef class PyMergeOperator(object):
                         merge_callback))
 
         elif isinstance(ob, IMergeOperator):
-            self.ob = ob
             self.merge_op.reset(
                 <merge_operator.MergeOperator*>
                     new merge_operator.MergeOperatorWrapper(
@@ -337,10 +336,28 @@ cdef class PyMergeOperator(object):
                         <void*>ob,
                         full_merge_callback,
                         partial_merge_callback))
+        elif isinstance(ob, str):
+            if ob == "put":
+              self.merge_op = merge_operator.MergeOperators.CreatePutOperator()
+            elif ob == "put_v1":
+              self.merge_op = merge_operator.MergeOperators.CreateDeprecatedPutOperator()
+            elif ob == "uint64add":
+              self.merge_op = merge_operator.MergeOperators.CreateUInt64AddOperator()
+            elif ob == "stringappend":
+              self.merge_op = merge_operator.MergeOperators.CreateStringAppendOperator()
+            #TODO: necessary?
+            #  elif ob == "stringappendtest":
+              #  self.merge_op = merge_operator.MergeOperators.CreateStringAppendTESTOperator()
+            elif ob == "max":
+              self.merge_op = merge_operator.MergeOperators.CreateMaxOperator()
+            else:
+                msg = "{0} is not the default type".format(ob)
+                raise TypeError(msg)
         else:
             msg = "%s is not of this types %s"
             msg %= (ob, (IAssociativeMergeOperator, IMergeOperator))
             raise TypeError(msg)
+
 
     cdef object get_ob(self):
         return self.ob
@@ -695,6 +712,7 @@ cdef class HashLinkListMemtableFactory(PyMemtableFactory):
         self.factory.reset(memtablerep.NewHashLinkListRepFactory(bucket_count))
 ##################################
 
+
 cdef class CompressionType(object):
     no_compression = u'no_compression'
     snappy_compression = u'snappy_compression'
@@ -786,6 +804,32 @@ cdef class Options(object):
             return self.opts.max_open_files
         def __set__(self, value):
             self.opts.max_open_files = value
+
+    property compression_opts:
+        def __get__(self):
+            cdef dict ret_ob = {}
+
+            ret_ob['window_bits'] = self.opts.compression_opts.window_bits
+            ret_ob['level'] = self.opts.compression_opts.level
+            ret_ob['strategy'] = self.opts.compression_opts.strategy
+            ret_ob['max_dict_bytes'] = self.opts.compression_opts.max_dict_bytes
+
+            return ret_ob
+
+        def __set__(self, dict value):
+            cdef options.CompressionOptions* copts
+            copts = cython.address(self.opts.compression_opts)
+            #  CompressionOptions(int wbits, int _lev, int _strategy, int _max_dict_bytes)
+            if 'window_bits' in value:
+                copts.window_bits  = value['window_bits']
+            if 'level' in value:
+                copts.level = value['level']
+            if 'strategy' in value:
+                copts.strategy = value['strategy']
+            if 'max_dict_bytes' in value:
+                copts.max_dict_bytes = value['max_dict_bytes']
+
+
 
     property compression:
         def __get__(self):

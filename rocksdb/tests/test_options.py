@@ -22,6 +22,39 @@ class TestMergeOperator(rocksdb.interfaces.MergeOperator):
         return b'testmergeop'
 
 class TestOptions(unittest.TestCase):
+    def test_default_merge_operator(self):
+        opts = rocksdb.Options()
+        self.assertEqual(True, opts.paranoid_checks)
+        opts.paranoid_checks = False
+        self.assertEqual(False, opts.paranoid_checks)
+
+        self.assertIsNone(opts.merge_operator)
+        opts.merge_operator = "uint64add"
+        self.assertIsNotNone(opts.merge_operator)
+        self.assertEqual(opts.merge_operator, "uint64add")
+        with self.assertRaises(TypeError):
+            opts.merge_operator = "not an operator"
+
+    def test_compression_opts(self):
+        opts = rocksdb.Options()
+        compression_opts = opts.compression_opts
+        # default value
+        self.assertEqual(isinstance(compression_opts, dict), True)
+        self.assertEqual(compression_opts['window_bits'], -14)
+        self.assertEqual(compression_opts['level'], -1)
+        self.assertEqual(compression_opts['strategy'], 0)
+        self.assertEqual(compression_opts['max_dict_bytes'], 0)
+
+        with self.assertRaises(TypeError):
+            opts.compression_opts = list(1,2)
+
+        opts.compression_opts = {'window_bits': 1, 'level': 2, 'strategy': 3, 'max_dict_bytes': 4}
+        compression_opts = opts.compression_opts
+        self.assertEqual(compression_opts['window_bits'], 1)
+        self.assertEqual(compression_opts['level'], 2)
+        self.assertEqual(compression_opts['strategy'], 3)
+        self.assertEqual(compression_opts['max_dict_bytes'], 4)
+
     def test_simple(self):
         opts = rocksdb.Options()
         self.assertEqual(True, opts.paranoid_checks)
