@@ -725,6 +725,12 @@ cdef class CompressionType(object):
     zstdnotfinal_compression = u'zstdnotfinal_compression'
     disable_compression = u'disable_compression'
 
+cdef class CompactionPri(object):
+    by_compensated_size = u'by_compensated_size'
+    oldest_largest_seq_first = u'oldest_largest_seq_first'
+    oldest_smallest_seq_first = u'oldest_smallest_seq_first'
+    min_overlapping_ratio = u'min_overlapping_ratio'
+
 cdef class Options(object):
     cdef options.Options* opts
     cdef PyComparator py_comparator
@@ -829,6 +835,27 @@ cdef class Options(object):
             if 'max_dict_bytes' in value:
                 copts.max_dict_bytes = value['max_dict_bytes']
 
+    property compaction_pri:
+        def __get__(self):
+            if self.opts.compaction_pri == options.kByCompensatedSize:
+                return CompactionPri.by_compensated_size
+            if self.opts.compaction_pri == options.kOldestLargestSeqFirst:
+                return CompactionPri.oldest_largest_seq_first
+            if self.opts.compaction_pri == options.kOldestSmallestSeqFirst:
+                return CompactionPri.oldest_smallest_seq_first
+            if self.opts.compaction_pri == options.kMinOverlappingRatio:
+                return CompactionPri.min_overlapping_ratio
+        def __set__(self, value):
+            if value == CompactionPri.by_compensated_size:
+                self.opts.compaction_pri = options.kByCompensatedSize
+            elif value == CompactionPri.oldest_largest_seq_first:
+                self.opts.compaction_pri = options.kOldestLargestSeqFirst
+            elif value == CompactionPri.oldest_smallest_seq_first:
+                self.opts.compaction_pri = options.kOldestSmallestSeqFirst
+            elif value == CompactionPri.min_overlapping_ratio:
+                self.opts.compaction_pri = options.kMinOverlappingRatio
+            else:
+                raise TypeError("Unknown compaction pri: %s" % value)
 
 
     property compression:

@@ -35,6 +35,17 @@ class TestOptions(unittest.TestCase):
         with self.assertRaises(TypeError):
             opts.merge_operator = "not an operator"
 
+    def test_compaction_pri(self):
+        opts = rocksdb.Options()
+        # default compaction_pri 
+        self.assertEqual(opts.compaction_pri, rocksdb.CompactionPri.by_compensated_size)
+        opts.compaction_pri = rocksdb.CompactionPri.by_compensated_size
+        self.assertEqual(opts.compaction_pri, rocksdb.CompactionPri.by_compensated_size)
+        opts.compaction_pri = rocksdb.CompactionPri.oldest_largest_seq_first
+        self.assertEqual(opts.compaction_pri, rocksdb.CompactionPri.oldest_largest_seq_first)
+        opts.compaction_pri = rocksdb.CompactionPri.min_overlapping_ratio
+        self.assertEqual(opts.compaction_pri, rocksdb.CompactionPri.min_overlapping_ratio)
+
     def test_compression_opts(self):
         opts = rocksdb.Options()
         compression_opts = opts.compression_opts
