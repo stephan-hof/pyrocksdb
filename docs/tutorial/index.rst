@@ -137,6 +137,25 @@ Reversed iteration ::
     # prints [(b'key3', b'v3'), (b'key2', b'v2'), (b'key1', b'v1')]
     print list(reversed(it))
 
+SeekForPrev (Take the example from `https://github.com/facebook/rocksdb/wiki/SeekForPrev`)::
+
+    db.put(b'a1', b'a1_value')
+    db.put(b'a3', b'a3_value')
+    db.put(b'b1', b'b1_value')
+    db.put(b'b2', b'b2_value')
+    db.put(b'c2', b'c2_value')
+    db.put(b'c4', b'c4_value')
+
+    it = db.iteritems()
+    it.seek(b'a1')
+    assertEqual(it.get(), (b'a1', b'a1_value'))
+    it.seek(b'a3')
+    assertEqual(it.get(), (b'a3', b'a3_value'))
+    it.seek_for_prev(b'c4')
+    assertEqual(it.get(), (b'c4', b'c4_value'))
+    it.seek_for_prev(b'c3')
+    assertEqual(it.get(), (b'c2', b'c2_value'))
+
 
 Snapshots
 =========

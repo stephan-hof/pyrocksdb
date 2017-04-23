@@ -40,7 +40,7 @@ These varialbes are picked up by the compiler, linker and loader
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:`pwd`
     export LIBRARY_PATH=${LIBRARY_PATH}:`pwd`
 
-Building pyrocksdb
+Building python-rocksdb
 ------------------
 
 .. code-block:: bash
@@ -50,4 +50,4 @@ Building pyrocksdb
     cd pyrocks_test
     . bin/active
     pip install "Cython>=0.20"
-    pip install git+git://github.com/stephan-hof/pyrocksdb.git
+    pip install git+git://github.com/twmht/python-rocksdb.git

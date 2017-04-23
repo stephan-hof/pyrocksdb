@@ -7,7 +7,7 @@ pyrocksdb
 =========
 
 Python bindings for RocksDB.
-See http://pyrocksdb.readthedocs.org for a more comprehensive install and usage description.
+See http://python-rocksdb.readthedocs.io/en/latest/ for a more comprehensive install and usage description.
 
 
 Quick Install

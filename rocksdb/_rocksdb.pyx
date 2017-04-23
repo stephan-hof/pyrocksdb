@@ -1766,6 +1766,10 @@ cdef class BaseIterator(object):
         check_status(self.ptr.status())
         return ret
 
+    def get(self):
+        cdef object ret = self.get_ob()
+        return ret
+
     def __reversed__(self):
         return ReversedIterator(self)
 
@@ -1783,6 +1787,12 @@ cdef class BaseIterator(object):
         cdef Slice c_key = bytes_to_slice(key)
         with nogil:
             self.ptr.Seek(c_key)
+        check_status(self.ptr.status())
+
+    cpdef seek_for_prev(self, key):
+        cdef Slice c_key = bytes_to_slice(key)
+        with nogil:
+            self.ptr.SeekForPrev(c_key)
         check_status(self.ptr.status())
 
     cdef object get_ob(self):
@@ -1832,6 +1842,12 @@ cdef class ReversedIterator(object):
 
     def seek(self, key):
         self.it.seek(key)
+
+    def seek_for_prev(self, key):
+        self.it.seek_for_prev(key)
+
+    def get(self):
+        return self.it.get()
 
     def __iter__(self):
         return self

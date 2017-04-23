@@ -106,6 +106,52 @@ class TestDB(unittest.TestCase, TestHelper):
         self.assertEqual((True, None), self.db.key_may_exist(b'a'))
         self.assertEqual((True, b'1'), self.db.key_may_exist(b'a', True))
 
+    def test_seek_for_prev(self):
+        self.db.put(b'a1', b'a1_value')
+        self.db.put(b'a3', b'a3_value')
+        self.db.put(b'b1', b'b1_value')
+        self.db.put(b'b2', b'b2_value')
+        self.db.put(b'c2', b'c2_value')
+        self.db.put(b'c4', b'c4_value')
+
+        self.assertEqual(self.db.get(b'a1'), b'a1_value')
+
+        it = self.db.iterkeys()
+
+        it.seek(b'a1')
+        self.assertEqual(it.get(), b'a1')
+        it.seek(b'a3')
+        self.assertEqual(it.get(), b'a3')
+        it.seek_for_prev(b'c4')
+        self.assertEqual(it.get(), b'c4')
+        it.seek_for_prev(b'c3')
+        self.assertEqual(it.get(), b'c2')
+
+        it = self.db.itervalues()
+        it.seek(b'a1')
+        self.assertEqual(it.get(), b'a1_value')
+        it.seek(b'a3')
+        self.assertEqual(it.get(), b'a3_value')
+        it.seek_for_prev(b'c4')
+        self.assertEqual(it.get(), b'c4_value')
+        it.seek_for_prev(b'c3')
+        self.assertEqual(it.get(), b'c2_value')
+
+        it = self.db.iteritems()
+        it.seek(b'a1')
+        self.assertEqual(it.get(), (b'a1', b'a1_value'))
+        it.seek(b'a3')
+        self.assertEqual(it.get(), (b'a3', b'a3_value'))
+        it.seek_for_prev(b'c4')
+        self.assertEqual(it.get(), (b'c4', b'c4_value'))
+        it.seek_for_prev(b'c3')
+        self.assertEqual(it.get(), (b'c2', b'c2_value'))
+
+        reverse_it = reversed(it)
+        it.seek_for_prev(b'c3')
+        self.assertEqual(it.get(), (b'c2', b'c2_value'))
+
+
     def test_iter_keys(self):
         for x in range(300):
             self.db.put(int_to_bytes(x), int_to_bytes(x))
