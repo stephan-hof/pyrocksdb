@@ -216,7 +216,7 @@ The following example python merge operator implements a counter ::
     # prints b'2'
     print db.get(b"a")
 
-We provide a set of default operators ``uintadd64`` and ``stringappend``::
+We provide a set of default operators ``rocksdb.merge_operators.UintAddOperator`` and ``rocksdb.merge_operators.StringAppendOperator``::
 
     from rocksdb.merge_operators import UintAddOperator, StringAppendOperator
     opts = rocksdb.Options()
