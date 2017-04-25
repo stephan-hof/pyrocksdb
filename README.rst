@@ -22,7 +22,7 @@ Quick install for debian/ubuntu like linux distributions.
     $ cd rocksdb
     $ make build && cd build
     $ cmake ..
-    $ export CPLUS_INCLUDE_PATH=${CPLUS_INCLUDE_PATH}:`pwd`/../include:`pwd`/../
+    $ export CPLUS_INCLUDE_PATH=${CPLUS_INCLUDE_PATH}:`pwd`/../include
     $ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:`pwd`
     $ export LIBRARY_PATH=${LIBRARY_PATH}:`pwd`
 
