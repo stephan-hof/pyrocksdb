@@ -9,26 +9,6 @@ cdef extern from "rocksdb/merge_operator.h" namespace "rocksdb":
     cdef cppclass MergeOperator:
         pass
 
-#  cdef extern from  "utilities/merge_operators.h" namespace "rocksdb::MergeOperators":
-cdef extern from  "utilities/merge_operators.h" namespace "rocksdb":
-    cdef cppclass MergeOperators:
-        @staticmethod
-        shared_ptr[MergeOperator] CreatePutOperator()
-        @staticmethod
-        shared_ptr[MergeOperator] CreateDeprecatedPutOperator()
-        @staticmethod
-        shared_ptr[MergeOperator] CreateUInt64AddOperator()
-        @staticmethod
-        shared_ptr[MergeOperator] CreateStringAppendOperator()
-        @staticmethod
-        shared_ptr[MergeOperator] CreateStringAppendTESTOperator()
-        @staticmethod
-        shared_ptr[MergeOperator] CreateMaxOperator()
-        @staticmethod
-        shared_ptr[MergeOperator] CreateFromStringId(const string &)
-
-
-
 ctypedef cpp_bool (*merge_func)(
     void*,
     const Slice&,

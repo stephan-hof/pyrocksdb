@@ -181,6 +181,8 @@ cdef class PyBytewiseComparator(PyComparator):
     cdef const comparator.Comparator* get_comparator(self):
         return self.comparator_ptr
 
+
+
 cdef int compare_callback(
     void* ctx,
     logger.Logger* log,
@@ -336,23 +338,23 @@ cdef class PyMergeOperator(object):
                         <void*>ob,
                         full_merge_callback,
                         partial_merge_callback))
-        elif isinstance(ob, str):
-            if ob == "put":
-              self.merge_op = merge_operator.MergeOperators.CreatePutOperator()
-            elif ob == "put_v1":
-              self.merge_op = merge_operator.MergeOperators.CreateDeprecatedPutOperator()
-            elif ob == "uint64add":
-              self.merge_op = merge_operator.MergeOperators.CreateUInt64AddOperator()
-            elif ob == "stringappend":
-              self.merge_op = merge_operator.MergeOperators.CreateStringAppendOperator()
-            #TODO: necessary?
-            #  elif ob == "stringappendtest":
-              #  self.merge_op = merge_operator.MergeOperators.CreateStringAppendTESTOperator()
-            elif ob == "max":
-              self.merge_op = merge_operator.MergeOperators.CreateMaxOperator()
-            else:
-                msg = "{0} is not the default type".format(ob)
-                raise TypeError(msg)
+        #  elif isinstance(ob, str):
+            #  if ob == "put":
+              #  self.merge_op = merge_operator.MergeOperators.CreatePutOperator()
+            #  elif ob == "put_v1":
+              #  self.merge_op = merge_operator.MergeOperators.CreateDeprecatedPutOperator()
+            #  elif ob == "uint64add":
+              #  self.merge_op = merge_operator.MergeOperators.CreateUInt64AddOperator()
+            #  elif ob == "stringappend":
+              #  self.merge_op = merge_operator.MergeOperators.CreateStringAppendOperator()
+            #  #TODO: necessary?
+            #  #  elif ob == "stringappendtest":
+              #  #  self.merge_op = merge_operator.MergeOperators.CreateStringAppendTESTOperator()
+            #  elif ob == "max":
+              #  self.merge_op = merge_operator.MergeOperators.CreateMaxOperator()
+            #  else:
+                #  msg = "{0} is not the default type".format(ob)
+                #  raise TypeError(msg)
         else:
             msg = "%s is not of this types %s"
             msg %= (ob, (IAssociativeMergeOperator, IMergeOperator))

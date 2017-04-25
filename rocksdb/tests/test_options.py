@@ -22,18 +22,18 @@ class TestMergeOperator(rocksdb.interfaces.MergeOperator):
         return b'testmergeop'
 
 class TestOptions(unittest.TestCase):
-    def test_default_merge_operator(self):
-        opts = rocksdb.Options()
-        self.assertEqual(True, opts.paranoid_checks)
-        opts.paranoid_checks = False
-        self.assertEqual(False, opts.paranoid_checks)
+    #  def test_default_merge_operator(self):
+        #  opts = rocksdb.Options()
+        #  self.assertEqual(True, opts.paranoid_checks)
+        #  opts.paranoid_checks = False
+        #  self.assertEqual(False, opts.paranoid_checks)
 
-        self.assertIsNone(opts.merge_operator)
-        opts.merge_operator = "uint64add"
-        self.assertIsNotNone(opts.merge_operator)
-        self.assertEqual(opts.merge_operator, "uint64add")
-        with self.assertRaises(TypeError):
-            opts.merge_operator = "not an operator"
+        #  self.assertIsNone(opts.merge_operator)
+        #  opts.merge_operator = "uint64add"
+        #  self.assertIsNotNone(opts.merge_operator)
+        #  self.assertEqual(opts.merge_operator, "uint64add")
+        #  with self.assertRaises(TypeError):
+            #  opts.merge_operator = "not an operator"
 
     def test_compaction_pri(self):
         opts = rocksdb.Options()

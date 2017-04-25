@@ -5,6 +5,7 @@ import unittest
 import rocksdb
 from itertools import takewhile
 import struct
+from rocksdb.merge_operators import UintAddOperator, StringAppendOperator
 
 def int_to_bytes(ob):
     return str(ob).encode('ascii')
@@ -277,11 +278,12 @@ class AssocCounter(rocksdb.interfaces.AssociativeMergeOperator):
     def name(self):
         return b'AssocCounter'
 
+
 class TestUint64Merge(unittest.TestCase, TestHelper):
     def setUp(self):
         opts = rocksdb.Options()
         opts.create_if_missing = True
-        opts.merge_operator = "uint64add"
+        opts.merge_operator = UintAddOperator()
         self._clean()
         self.db = rocksdb.DB('/tmp/test', opts)
 
@@ -292,64 +294,46 @@ class TestUint64Merge(unittest.TestCase, TestHelper):
         self.db.put(b'a', struct.pack('Q', 5566))
         for x in range(1000):
             self.db.merge(b"a", struct.pack('Q', x))
-        print ('value', struct.unpack('Q', self.db.get(b'a'))[0])
         self.assertEqual(5566 + sum(range(1000)), struct.unpack('Q', self.db.get(b'a'))[0])
 
-class TestUint64Merge(unittest.TestCase, TestHelper):
-    def setUp(self):
-        opts = rocksdb.Options()
-        opts.create_if_missing = True
-        opts.merge_operator = "uint64add"
-        self._clean()
-        self.db = rocksdb.DB('/tmp/test', opts)
 
-    def tearDown(self):
-        self._close_db()
+#  class TestPutMerge(unittest.TestCase, TestHelper):
+    #  def setUp(self):
+        #  opts = rocksdb.Options()
+        #  opts.create_if_missing = True
+        #  opts.merge_operator = "put"
+        #  self._clean()
+        #  self.db = rocksdb.DB('/tmp/test', opts)
 
-    def test_merge(self):
-        self.db.put(b'a', struct.pack('Q', 5566))
-        for x in range(1000):
-            self.db.merge(b"a", struct.pack('Q', x))
-        #  print ('value', struct.unpack('Q', self.db.get(b'a'))[0])
-        self.assertEqual(5566 + sum(range(1000)), struct.unpack('Q', self.db.get(b'a'))[0])
+    #  def tearDown(self):
+        #  self._close_db()
 
-class TestPutMerge(unittest.TestCase, TestHelper):
-    def setUp(self):
-        opts = rocksdb.Options()
-        opts.create_if_missing = True
-        opts.merge_operator = "put"
-        self._clean()
-        self.db = rocksdb.DB('/tmp/test', opts)
+    #  def test_merge(self):
+        #  self.db.put(b'a', b'ccc')
+        #  self.db.merge(b'a', b'ddd')
+        #  self.assertEqual(self.db.get(b'a'), 'ddd')
 
-    def tearDown(self):
-        self._close_db()
+#  class TestPutV1Merge(unittest.TestCase, TestHelper):
+    #  def setUp(self):
+        #  opts = rocksdb.Options()
+        #  opts.create_if_missing = True
+        #  opts.merge_operator = "put_v1"
+        #  self._clean()
+        #  self.db = rocksdb.DB('/tmp/test', opts)
 
-    def test_merge(self):
-        self.db.put(b'a', b'ccc')
-        self.db.merge(b'a', b'ddd')
-        self.assertEqual(self.db.get(b'a'), 'ddd')
+    #  def tearDown(self):
+        #  self._close_db()
 
-class TestPutV1Merge(unittest.TestCase, TestHelper):
-    def setUp(self):
-        opts = rocksdb.Options()
-        opts.create_if_missing = True
-        opts.merge_operator = "put_v1"
-        self._clean()
-        self.db = rocksdb.DB('/tmp/test', opts)
-
-    def tearDown(self):
-        self._close_db()
-
-    def test_merge(self):
-        self.db.put(b'a', b'ccc')
-        self.db.merge(b'a', b'ddd')
-        self.assertEqual(self.db.get(b'a'), 'ddd')
+    #  def test_merge(self):
+        #  self.db.put(b'a', b'ccc')
+        #  self.db.merge(b'a', b'ddd')
+        #  self.assertEqual(self.db.get(b'a'), 'ddd')
 
 class TestStringAppendOperatorMerge(unittest.TestCase, TestHelper):
     def setUp(self):
         opts = rocksdb.Options()
         opts.create_if_missing = True
-        opts.merge_operator = "stringappend"
+        opts.merge_operator = StringAppendOperator()
         self._clean()
         self.db = rocksdb.DB('/tmp/test', opts)
 
@@ -361,21 +345,21 @@ class TestStringAppendOperatorMerge(unittest.TestCase, TestHelper):
         self.db.merge(b'a', b'ddd')
         self.assertEqual(self.db.get(b'a'), 'ccc,ddd')
 
-class TestStringMaxOperatorMerge(unittest.TestCase, TestHelper):
-    def setUp(self):
-        opts = rocksdb.Options()
-        opts.create_if_missing = True
-        opts.merge_operator = "max"
-        self._clean()
-        self.db = rocksdb.DB('/tmp/test', opts)
+#  class TestStringMaxOperatorMerge(unittest.TestCase, TestHelper):
+    #  def setUp(self):
+        #  opts = rocksdb.Options()
+        #  opts.create_if_missing = True
+        #  opts.merge_operator = "max"
+        #  self._clean()
+        #  self.db = rocksdb.DB('/tmp/test', opts)
 
-    def tearDown(self):
-        self._close_db()
+    #  def tearDown(self):
+        #  self._close_db()
 
-    def test_merge(self):
-        self.db.put(b'a', int_to_bytes(55))
-        self.db.merge(b'a', int_to_bytes(56))
-        self.assertEqual(int(self.db.get(b'a')), 56)
+    #  def test_merge(self):
+        #  self.db.put(b'a', int_to_bytes(55))
+        #  self.db.merge(b'a', int_to_bytes(56))
+        #  self.assertEqual(int(self.db.get(b'a')), 56)
 
 
 class TestAssocMerge(unittest.TestCase, TestHelper):

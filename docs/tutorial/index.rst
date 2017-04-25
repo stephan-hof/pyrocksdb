@@ -216,20 +216,20 @@ The following example python merge operator implements a counter ::
     # prints b'2'
     print db.get(b"a")
 
-We provide a set of default operators ``uintadd64``, ``put`` and ``stringappend``
+We provide a set of default operators ``uintadd64`` and ``stringappend``::
 
-The following example using ``uintadd64`` where each operand is ``uint64`` ::
-
-    import rocksdb
-    import struct
+    from rocksdb.merge_operators import UintAddOperator, StringAppendOperator
     opts = rocksdb.Options()
     opts.create_if_missing = True
-    opts.merge_operator = 'uint64add'
-    db = rocksdb.DB("test.db", opts)
-    # since every operand is uint64, you need to pack it into string
-    db.put(b'a', struct.pack('Q', 1000))
-    db.merge(b'a', struct.pack('Q', 2000))
-    assert struct.unpack('Q', db.get(b'a'))[0] == 3000
+    # you should also play with StringAppendOperator
+    opts.merge_operator = UintAddOperator()
+    db = rocksdb.DB('/tmp/test', opts)
+    self.db.put(b'a', struct.pack('Q', 5566))
+    for x in range(1000):
+        self.db.merge(b"a", struct.pack('Q', x))
+    self.assertEqual(5566 + sum(range(1000)), struct.unpack('Q', self.db.get(b'a'))[0])
+
+
 
 PrefixExtractor
 ===============
