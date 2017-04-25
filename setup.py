@@ -43,6 +43,7 @@ setup(
     package_dir={'rocksdb': 'rocksdb'},
     packages=find_packages('.'),
     ext_modules=cythonize([mod1]),
-    test_suite='rocksdb.tests',
+    setup_requires=['pytest-runner'],
+    tests_require=['pytest'],
     include_package_data=True
 )
