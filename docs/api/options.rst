@@ -7,7 +7,7 @@ Options object
 
 .. py:class:: rocksdb.Options
 
-    .. IMPORTANT:: 
+    .. IMPORTANT::
 
         The default values mentioned here, describe the values of the
         C++ library only.  This wrapper does not set any default value
@@ -18,7 +18,7 @@ Options object
         | Most recent default values should be here
         | https://github.com/facebook/rocksdb/blob/master/include/rocksdb/options.h
         | https://github.com/facebook/rocksdb/blob/master/util/options.cc
-        
+
     .. py:method:: __init__(**kwargs)
 
         All options mentioned below can also be passed as keyword-arguments in
@@ -215,48 +215,6 @@ Options object
         | *Type:* ``[int]``
         | *Default:* ``[1, 1, 1, 1, 1, 1, 1]``
 
-    .. py:attribute:: expanded_compaction_factor
-
-        Maximum number of bytes in all compacted files. We avoid expanding
-        the lower level file set of a compaction if it would make the
-        total compaction cover more than
-        (expanded_compaction_factor * targetFileSizeLevel()) many bytes.
-        
-        | *Type:* ``int``
-        | *Default:* ``25``
-
-    .. py:attribute:: source_compaction_factor
-
-        Maximum number of bytes in all source files to be compacted in a
-        single compaction run. We avoid picking too many files in the
-        source level so that we do not exceed the total source bytes
-        for compaction to exceed
-        (source_compaction_factor * targetFileSizeLevel()) many bytes.
-        If 1 pick maxfilesize amount of data as the source of
-        a compaction.
-
-        | *Type:* ``int``
-        | *Default:* ``1``
-
-    .. py:attribute:: max_grandparent_overlap_factor
-
-        Control maximum bytes of overlaps in grandparent (i.e., level+2) before we
-        stop building a single file in a level->level+1 compaction.
-
-        | *Type:* ``int``
-        | *Default:* ``10``
-
-    .. py:attribute:: disable_data_sync
-
-        If true, then the contents of data files are not synced
-        to stable storage. Their contents remain in the OS buffers till the
-        OS decides to flush them. This option is good for bulk-loading
-        of data. Once the bulk-loading is complete, please issue a
-        sync to the OS to flush all dirty buffesrs to stable storage.
-
-        | *Type:* ``bool``
-        | *Default:* ``False``
-
     .. py:attribute:: use_fsync
 
         If true, then every store to stable storage will issue a fsync.
@@ -399,7 +357,7 @@ Options object
         size of one block in arena memory allocation.
         If <= 0, a proper value is automatically calculated (usually 1/10 of
         writer_buffer_size).
-         
+
         | *Type:* ``int``
         | *Default:* ``0``
 
@@ -407,7 +365,7 @@ Options object
 
         Disable automatic compactions. Manual compactions can still
         be issued on this database.
-         
+
         | *Type:* ``bool``
         | *Default:* ``False``
 
@@ -447,13 +405,6 @@ Options object
         | *Type:* ``bool``
         | *Default:* ``True``
 
-    .. py:attribute:: allow_os_buffer
-
-        Data being read from file storage may be buffered in the OS
-
-        | *Type:* ``bool``
-        | *Default:* ``True``
-
     .. py:attribute:: allow_mmap_reads
 
         Allow the OS to mmap file for reading sst tables
@@ -479,7 +430,7 @@ Options object
 
         Skip log corruption error on recovery
         (If client is ok with losing most recent changes)
-         
+
         | *Type:* ``bool``
         | *Default:* ``False``
 
@@ -504,7 +455,7 @@ Options object
         to kernel. This could reduce context switch when the mutex is not
         heavily contended. However, if the mutex is hot, we could end up
         wasting spin time.
-         
+
         | *Type:* ``bool``
         | *Default:* ``False``
 
@@ -513,17 +464,9 @@ Options object
         Allows OS to incrementally sync files to disk while they are being
         written, asynchronously, in the background.
         Issue one request for every bytes_per_sync written. 0 turns it off.
-         
+
         | *Type:* ``int``
         | *Default:* ``0``
-
-    .. py:attribute:: verify_checksums_in_compaction
-
-        If ``True``, compaction will verify checksum on every read that
-        happens as part of compaction.
-
-        | *Type:* ``bool``
-        | *Default:* ``True``
 
     .. py:attribute:: compaction_style
 
@@ -603,23 +546,13 @@ Options object
             opts = rocksdb.Options()
             opts.compaction_options_universal = {'stop_style': 'similar_size'}
 
-    .. py:attribute:: filter_deletes
-
-        Use KeyMayExist API to filter deletes when this is true.
-        If KeyMayExist returns false, i.e. the key definitely does not exist, then
-        the delete is a noop. KeyMayExist only incurs in-memory look up.
-        This optimization avoids writing the delete to storage when appropriate.
-         
-        | *Type:* ``bool``
-        | *Default:* ``False``
-
     .. py:attribute:: max_sequential_skip_in_iterations
 
         An iteration->Next() sequentially skips over keys with the same
         user-key unless this option is set. This number specifies the number
         of keys (with the same userkey) that will be sequentially
         skipped before a reseek is issued.
-         
+
         | *Type:* ``int``
         | *Default:* ``8``
 
@@ -654,7 +587,7 @@ Options object
         * key exists in current memtable
         * new sizeof(new_value) <= sizeof(old_value)
         * old_value for that key is a put i.e. kTypeValue
- 
+
         | *Type:* ``bool``
         | *Default:* ``False``
 
@@ -694,7 +627,7 @@ Options object
         :py:class:`rocksdb.interfaces.MergeOperator` or
         :py:class:`rocksdb.interfaces.AssociativeMergeOperator`
         interface.
-        
+
         *Default:* ``None``
 
     .. py:attribute:: prefix_extractor
