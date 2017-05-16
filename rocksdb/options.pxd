@@ -60,11 +60,7 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         uint64_t max_bytes_for_level_base
         int max_bytes_for_level_multiplier
         vector[int] max_bytes_for_level_multiplier_additional
-        int expanded_compaction_factor
-        int source_compaction_factor
-        int max_grandparent_overlap_factor
         # TODO: statistics
-        cpp_bool disableDataSync
         cpp_bool use_fsync
         string db_log_dir
         string wal_dir
@@ -86,7 +82,6 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         uint64_t WAL_size_limit_MB
         size_t manifest_preallocation_size
         cpp_bool purge_redundant_kvs_while_flush
-        cpp_bool allow_os_buffer
         cpp_bool allow_mmap_reads
         cpp_bool allow_mmap_writes
         cpp_bool is_fd_close_on_exec
@@ -96,10 +91,8 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         # TODO: enum { NONE, NORMAL, SEQUENTIAL, WILLNEED } access_hint_on_compaction_start
         cpp_bool use_adaptive_mutex
         uint64_t bytes_per_sync
-        cpp_bool verify_checksums_in_compaction
         CompactionStyle compaction_style
         CompactionOptionsUniversal compaction_options_universal
-        cpp_bool filter_deletes
         uint64_t max_sequential_skip_in_iterations
         shared_ptr[MemTableRepFactory] memtable_factory
         shared_ptr[TableFactory] table_factory
