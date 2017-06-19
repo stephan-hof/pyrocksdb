@@ -130,6 +130,8 @@ cdef extern from "rocksdb/options.h" namespace "rocksdb":
         # TODO: remove options source_compaction_factor, max_grandparent_overlap_bytes and expanded_compaction_factor from document
         uint64_t max_compaction_bytes
         CompressionOptions compression_opts
+        cpp_bool allow_concurrent_memtable_write
+        cpp_bool enable_write_thread_adaptive_yield
 
     cdef cppclass WriteOptions:
         cpp_bool sync

@@ -46,6 +46,18 @@ class TestOptions(unittest.TestCase):
         opts.compaction_pri = rocksdb.CompactionPri.min_overlapping_ratio
         self.assertEqual(opts.compaction_pri, rocksdb.CompactionPri.min_overlapping_ratio)
 
+    def test_enable_write_thread_adaptive_yield(self):
+        opts = rocksdb.Options()
+        self.assertEqual(opts.enable_write_thread_adaptive_yield, True)
+        opts.enable_write_thread_adaptive_yield = False
+        self.assertEqual(opts.enable_write_thread_adaptive_yield, False)
+
+    def test_allow_concurrent_memtable_write(self):
+        opts = rocksdb.Options()
+        self.assertEqual(opts.allow_concurrent_memtable_write, True)
+        opts.allow_concurrent_memtable_write = False
+        self.assertEqual(opts.allow_concurrent_memtable_write, False)
+
     def test_compression_opts(self):
         opts = rocksdb.Options()
         compression_opts = opts.compression_opts

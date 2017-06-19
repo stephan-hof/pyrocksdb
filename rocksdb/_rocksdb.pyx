@@ -1094,6 +1094,18 @@ cdef class Options(object):
         #  def __set__(self, value):
             #  self.opts.allow_os_buffer = value
 
+    property enable_write_thread_adaptive_yield:
+        def __get__(self):
+            return self.opts.enable_write_thread_adaptive_yield
+        def __set__(self, value):
+            self.opts.enable_write_thread_adaptive_yield = value
+
+    property allow_concurrent_memtable_write:
+        def __get__(self):
+            return self.opts.allow_concurrent_memtable_write
+        def __set__(self, value):
+            self.opts.allow_concurrent_memtable_write = value
+
     property allow_mmap_reads:
         def __get__(self):
             return self.opts.allow_mmap_reads
