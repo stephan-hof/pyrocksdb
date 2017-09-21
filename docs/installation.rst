@@ -14,8 +14,9 @@ For more details consider https://github.com/facebook/rocksdb/blob/master/INSTAL
     apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
     git clone https://github.com/facebook/rocksdb.git
     cd rocksdb
-    make build && cd build
+    mkdir build && cd build
     cmake ..
+    make
 
 Systemwide rocksdb
 ^^^^^^^^^^^^^^^^^^
@@ -48,6 +49,6 @@ Building python-rocksdb
     apt-get install python-virtualenv python-dev
     virtualenv pyrocks_test
     cd pyrocks_test
-    . bin/active
+    . bin/activate
     pip install "Cython>=0.20"
     pip install git+git://github.com/twmht/python-rocksdb.git
