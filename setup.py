@@ -38,11 +38,11 @@ mod1 = Extension(
 
 setup(
     name="python-rocksdb",
-    version='0.6.7',
+    version='0.6.8',
     description="Python bindings for RocksDB",
     keywords='rocksdb',
     author='Ming Hsuan Tu',
-    author_email="Use the github issues",
+    author_email="qrnnis2623891@gmail.com",
     url="https://github.com/twmht/python-rocksdb",
     license='BSD License',
     install_requires=['setuptools'],
