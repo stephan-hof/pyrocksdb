@@ -1,3 +1,4 @@
+import platform
 from setuptools import setup
 from setuptools import find_packages
 from distutils.extension import Extension
@@ -10,17 +11,22 @@ except ImportError:
 else:
     sources = ['rocksdb/_rocksdb.pyx']
 
+extra_compile_args = [
+    '-std=c++11',
+    '-O3',
+    '-Wall',
+    '-Wextra',
+    '-Wconversion',
+    '-fno-strict-aliasing'
+]
+
+if platform.system() == 'Darwin':
+    extra_compile_args += ['-mmacosx-version-min=10.7', '-stdlib=libc++']
+
 mod1 = Extension(
     'rocksdb._rocksdb',
     sources,
-    extra_compile_args=[
-        '-std=c++11',
-        '-O3',
-        '-Wall',
-        '-Wextra',
-        '-Wconversion',
-        '-fno-strict-aliasing'
-    ],
+    extra_compile_args=extra_compile_args,
     language='c++',
     libraries=[
         'rocksdb',
