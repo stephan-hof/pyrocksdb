@@ -1,5 +1,5 @@
 import struct as py_struct
-from interfaces import AssociativeMergeOperator
+from rocksdb.interfaces import AssociativeMergeOperator
 
 class UintAddOperator(AssociativeMergeOperator):
     def merge(self, key, existing_value, value):

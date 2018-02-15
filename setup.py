@@ -1,15 +1,8 @@
 import platform
 from setuptools import setup
 from setuptools import find_packages
-from distutils.extension import Extension
+from setuptools import Extension
 
-try:
-    from Cython.Build import cythonize
-except ImportError:
-    def cythonize(extensions): return extensions
-    sources = ['rocksdb/_rocksdb.cpp']
-else:
-    sources = ['rocksdb/_rocksdb.pyx']
 
 extra_compile_args = [
     '-std=c++11',
@@ -17,24 +10,13 @@ extra_compile_args = [
     '-Wall',
     '-Wextra',
     '-Wconversion',
-    '-fno-strict-aliasing'
+    '-fno-strict-aliasing',
+    '-fno-rtti',
 ]
 
 if platform.system() == 'Darwin':
     extra_compile_args += ['-mmacosx-version-min=10.7', '-stdlib=libc++']
 
-mod1 = Extension(
-    'rocksdb._rocksdb',
-    sources,
-    extra_compile_args=extra_compile_args,
-    language='c++',
-    libraries=[
-        'rocksdb',
-        'snappy',
-        'bz2',
-        'z'
-    ]
-)
 
 setup(
     name="python-rocksdb",
@@ -45,11 +27,20 @@ setup(
     author_email="qrnnis2623891@gmail.com",
     url="https://github.com/twmht/python-rocksdb",
     license='BSD License',
-    install_requires=['setuptools'],
+    setup_requires=['setuptools>=25', 'Cython>=0.20'],
+    install_requires=['setuptools>=25'],
     package_dir={'rocksdb': 'rocksdb'},
     packages=find_packages('.'),
-    ext_modules=cythonize([mod1]),
-    setup_requires=['pytest-runner'],
-    tests_require=['pytest'],
+    ext_modules=[Extension(
+        'rocksdb._rocksdb',
+        ['rocksdb/_rocksdb.pyx'],
+        extra_compile_args=extra_compile_args,
+        language='c++',
+        libraries=['rocksdb', 'snappy', 'bz2', 'z', 'lz4'],
+    )],
+    extras_require={
+        "doc": ['sphinx_rtd_theme', 'sphinx'],
+        "test": ['pytest'],
+    },
     include_package_data=True
 )

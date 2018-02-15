@@ -93,7 +93,7 @@ class TestOptions(unittest.TestCase):
             opts.comparator,
             rocksdb.BytewiseComparator)
 
-        self.assertEqual(rocksdb.CompressionType.no_compression, opts.compression)
+        self.assertEqual(rocksdb.CompressionType.snappy_compression, opts.compression)
 
         opts.compression = rocksdb.CompressionType.zstd_compression
         self.assertEqual(rocksdb.CompressionType.zstd_compression, opts.compression)
