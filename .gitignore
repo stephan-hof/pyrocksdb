@@ -1,2 +1,11 @@
-/build/
-/docs/_build/
+build
+docs/_build
+.pytest_cache
+.eggs/
+.tox/
+*.egg-info/
+*.pyc
+*.so
+__pycache__
+rocksdb/_rocksdb.cpp
+

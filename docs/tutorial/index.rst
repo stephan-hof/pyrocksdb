@@ -1,5 +1,5 @@
 Basic Usage of python-rocksdb
-************************
+*****************************
 
 Open
 ====
@@ -32,7 +32,7 @@ It assings a cache of 2.5G, uses a bloom filter for faster lookups and keeps
 more data (64 MB) in memory before writting a .sst file.
 
 About Bytes And Unicode
-========================
+=======================
 
 RocksDB stores all data as uninterpreted *byte strings*.
 pyrocksdb behaves the same and uses nearly everywhere byte strings too.

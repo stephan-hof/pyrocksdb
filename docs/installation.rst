@@ -1,7 +1,22 @@
 Installing
-**********
+==========
 .. highlight:: bash
 
+
+With distro package and pypi
+****************************
+
+This requires librocksdb-dev>=5.0
+
+.. code-block:: bash
+
+    apt-get install python-virtualenv python-dev librocksdb-dev
+    virtualenv venv
+    source venv/bin/activate
+    pip install pythin-rocksdb
+
+From source
+***********
 
 Building rocksdb
 ----------------
@@ -14,8 +29,9 @@ For more details consider https://github.com/facebook/rocksdb/blob/master/INSTAL
     apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
     git clone https://github.com/facebook/rocksdb.git
     cd rocksdb
-    make build && cd build
+    mkdir build && cd build
     cmake ..
+    make
 
 Systemwide rocksdb
 ^^^^^^^^^^^^^^^^^^
@@ -41,13 +57,11 @@ These varialbes are picked up by the compiler, linker and loader
     export LIBRARY_PATH=${LIBRARY_PATH}:`pwd`
 
 Building python-rocksdb
-------------------
+-----------------------
 
 .. code-block:: bash
 
     apt-get install python-virtualenv python-dev
-    virtualenv pyrocks_test
-    cd pyrocks_test
-    . bin/active
-    pip install "Cython>=0.20"
-    pip install git+git://github.com/twmht/python-rocksdb.git
+    virtualenv venv
+    source venv/bin/activate
+    pip install git+git://github.com/twmht/python-rocksdb.git#egg=python-rocksdb
