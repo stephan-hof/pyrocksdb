@@ -13,7 +13,7 @@ This requires librocksdb-dev>=5.0
     apt-get install python-virtualenv python-dev librocksdb-dev
     virtualenv venv
     source venv/bin/activate
-    pip install pythin-rocksdb
+    pip install python-rocksdb
 
 From source
 ***********
