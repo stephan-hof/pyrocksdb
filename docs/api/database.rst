@@ -138,7 +138,7 @@ Database object
             * ``(True, <data>)`` if key is found and value in memory and ``fetch=True``
             * ``(False, None)`` if key is not found
 
-    .. py:method:: iterkeys(fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
+    .. py:method:: iterkeys(verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         Iterate over the keys
 
@@ -150,7 +150,7 @@ Database object
 
         :rtype: :py:class:`rocksdb.BaseIterator`
 
-    .. py:method:: itervalues(fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
+    .. py:method:: itervalues(verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         Iterate over the values
 
@@ -162,7 +162,7 @@ Database object
 
         :rtype: :py:class:`rocksdb.BaseIterator`
 
-    .. py:method:: iteritems(fetch=False, verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
+    .. py:method:: iteritems(verify_checksums=False, fill_cache=True, snapshot=None, read_tier="all")
 
         Iterate over the items
 
