@@ -17,7 +17,7 @@ Quick install for debian/ubuntu like linux distributions.
 
 .. code-block:: bash
 
-    $ apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
+    $ apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev liblz4-dev
     $ git clone https://github.com/facebook/rocksdb.git
     $ cd rocksdb
     $ mkdir build && cd build
