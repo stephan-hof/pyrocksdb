@@ -13,14 +13,17 @@ class RecordItemsHandler: public rocksdb::WriteBatch::Handler {
             public:
                 BatchItem(
                     const Optype& op,
+                    uint32_t column_family_id,
                     const rocksdb::Slice& key,
                     const rocksdb::Slice& value):
                         op(op),
+                        column_family_id(column_family_id),
                         key(key),
                         value(value)
                 {}
 
             const Optype op;
+            uint32_t column_family_id;
             const rocksdb::Slice key;
             const rocksdb::Slice value;
         };
@@ -31,17 +34,23 @@ class RecordItemsHandler: public rocksdb::WriteBatch::Handler {
         /* Items is filled during iteration. */
         RecordItemsHandler(BatchItems* items): items(items) {}
 
-        void Put(const Slice& key, const Slice& value) {
-            this->items->emplace_back(PutRecord, key, value);
+        virtual rocksdb::Status PutCF(
+          uint32_t column_family_id, const Slice& key, const Slice& value) {
+            this->items->emplace_back(PutRecord, column_family_id, key, value);
+            return rocksdb::Status::OK();
         }
 
-        void Merge(const Slice& key, const Slice& value) {
-            this->items->emplace_back(MergeRecord, key, value);
+        virtual rocksdb::Status MergeCF(
+          uint32_t column_family_id, const Slice& key, const Slice& value) {
+            this->items->emplace_back(MergeRecord, column_family_id, key, value);
+            return rocksdb::Status::OK();
         }
 
-        virtual void Delete(const Slice& key) {
-            this->items->emplace_back(DeleteRecord, key, rocksdb::Slice());
-        } 
+        virtual rocksdb::Status DeleteCF(
+          uint32_t column_family_id, const Slice& key) {
+            this->items->emplace_back(DeleteRecord, column_family_id, key, rocksdb::Slice());
+            return rocksdb::Status::OK();
+        }
 
     private:
         BatchItems* items;

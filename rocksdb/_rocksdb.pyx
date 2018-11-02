@@ -50,6 +50,7 @@ from interfaces import Comparator as IComparator
 from interfaces import SliceTransform as ISliceTransform
 import traceback
 import errors
+import weakref
 
 ctypedef const filter_policy.FilterPolicy ConstFilterPolicy
 
@@ -292,7 +293,7 @@ cdef class PyBloomFilterPolicy(PyFilterPolicy):
 
         self.policy.get().CreateFilter(
             vector_data(c_keys),
-            c_keys.size(),
+            <int>c_keys.size(),
             cython.address(dst))
 
         return string_to_bytes(dst)
@@ -733,26 +734,128 @@ cdef class CompactionPri(object):
     oldest_smallest_seq_first = u'oldest_smallest_seq_first'
     min_overlapping_ratio = u'min_overlapping_ratio'
 
-cdef class Options(object):
-    cdef options.Options* opts
+@cython.internal
+cdef class _ColumnFamilyHandle:
+    """ This is an internal class that we will weakref for safety """
+    cdef db.ColumnFamilyHandle* handle
+    cdef object __weakref__
+    cdef object weak_handle
+
+    def __cinit__(self):
+        self.handle = NULL
+
+    def __dealloc__(self):
+        if not self.handle == NULL:
+            del self.handle
+
+    @staticmethod
+    cdef from_handle_ptr(db.ColumnFamilyHandle* handle):
+        inst = <_ColumnFamilyHandle>_ColumnFamilyHandle.__new__(_ColumnFamilyHandle)
+        inst.handle = handle
+        return inst
+
+    @property
+    def name(self):
+        return self.handle.GetName()
+
+    @property
+    def id(self):
+        return self.handle.GetID()
+
+    @property
+    def weakref(self):
+        if self.weak_handle is None:
+            self.weak_handle = ColumnFamilyHandle.from_wrapper(self)
+        return self.weak_handle
+
+cdef class ColumnFamilyHandle:
+    """ This represents a ColumnFamilyHandle """
+    cdef object _ref
+    cdef readonly bytes name
+    cdef readonly int id
+
+    def __cinit__(self, weakhandle):
+        self._ref = weakhandle
+        self.name = self._ref().name
+        self.id = self._ref().id
+
+    def __init__(self, *):
+        raise TypeError("These can not be constructed from Python")
+
+    @staticmethod
+    cdef object from_wrapper(_ColumnFamilyHandle real_handle):
+        return ColumnFamilyHandle.__new__(ColumnFamilyHandle, weakref.ref(real_handle))
+
+    @property
+    def is_valid(self):
+        return self._ref() is not None
+
+    def __repr__(self):
+        valid = "valid" if self.is_valid else "invalid"
+        return f"<ColumnFamilyHandle name: {self.name}, id: {self.id}, state: {valid}>"
+
+    cdef db.ColumnFamilyHandle* get_handle(self) except NULL:
+        cdef _ColumnFamilyHandle real_handle = self._ref()
+        if real_handle is None:
+            raise ValueError(f"{self} is no longer a valid ColumnFamilyHandle!")
+        return real_handle.handle
+
+    def __eq__(self, other):
+        cdef ColumnFamilyHandle fast_other
+        if isinstance(other, ColumnFamilyHandle):
+            fast_other = other
+            return (
+                self.name == fast_other.name
+                and self.id == fast_other.id
+                and self._ref == fast_other._ref
+            )
+        return False
+
+    def __lt__(self, other):
+        cdef ColumnFamilyHandle fast_other
+        if isinstance(other, ColumnFamilyHandle):
+            return self.id < other.id
+        return NotImplemented
+
+    # Since @total_ordering isn't a thing for cython
+    def __ne__(self, other):
+        return not self == other
+
+    def __gt__(self, other):
+        return other < self
+
+    def __le__(self, other):
+        return not other < self
+
+    def __ge__(self, other):
+        return not self < other
+
+    def __hash__(self):
+        # hash of a weakref matches that of its original ref'ed object
+        # so we use the id of our weakref object here to prevent
+        # a situation where we are invalid, but match a valid handle's hash
+        return hash((self.id, self.name, id(self._ref)))
+
+
+cdef class ColumnFamilyOptions(object):
+    cdef options.ColumnFamilyOptions* copts
     cdef PyComparator py_comparator
     cdef PyMergeOperator py_merge_operator
     cdef PySliceTransform py_prefix_extractor
     cdef PyTableFactory py_table_factory
     cdef PyMemtableFactory py_memtable_factory
-    cdef PyCache py_row_cache
 
     # Used to protect sharing of Options with many DB-objects
     cdef cpp_bool in_use
 
     def __cinit__(self):
-        self.opts = NULL
-        self.opts = new options.Options()
+        self.copts = NULL
+        self.copts = new options.ColumnFamilyOptions()
         self.in_use = False
 
     def __dealloc__(self):
-        if not self.opts == NULL:
-            del self.opts
+        if not self.copts == NULL:
+            del self.copts
 
     def __init__(self, **kwargs):
         self.py_comparator = BytewiseComparator()
@@ -760,6 +863,398 @@ cdef class Options(object):
         self.py_prefix_extractor = None
         self.py_table_factory = None
         self.py_memtable_factory = None
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    property write_buffer_size:
+        def __get__(self):
+            return self.copts.write_buffer_size
+        def __set__(self, value):
+            self.copts.write_buffer_size = value
+
+    property max_write_buffer_number:
+        def __get__(self):
+            return self.copts.max_write_buffer_number
+        def __set__(self, value):
+            self.copts.max_write_buffer_number = value
+
+    property min_write_buffer_number_to_merge:
+        def __get__(self):
+            return self.copts.min_write_buffer_number_to_merge
+        def __set__(self, value):
+            self.copts.min_write_buffer_number_to_merge = value
+
+    property compression_opts:
+        def __get__(self):
+            cdef dict ret_ob = {}
+
+            ret_ob['window_bits'] = self.copts.compression_opts.window_bits
+            ret_ob['level'] = self.copts.compression_opts.level
+            ret_ob['strategy'] = self.copts.compression_opts.strategy
+            ret_ob['max_dict_bytes'] = self.copts.compression_opts.max_dict_bytes
+
+            return ret_ob
+
+        def __set__(self, dict value):
+            cdef options.CompressionOptions* copts
+            copts = cython.address(self.copts.compression_opts)
+            #  CompressionOptions(int wbits, int _lev, int _strategy, int _max_dict_bytes)
+            if 'window_bits' in value:
+                copts.window_bits  = value['window_bits']
+            if 'level' in value:
+                copts.level = value['level']
+            if 'strategy' in value:
+                copts.strategy = value['strategy']
+            if 'max_dict_bytes' in value:
+                copts.max_dict_bytes = value['max_dict_bytes']
+
+    property compaction_pri:
+        def __get__(self):
+            if self.copts.compaction_pri == options.kByCompensatedSize:
+                return CompactionPri.by_compensated_size
+            if self.copts.compaction_pri == options.kOldestLargestSeqFirst:
+                return CompactionPri.oldest_largest_seq_first
+            if self.copts.compaction_pri == options.kOldestSmallestSeqFirst:
+                return CompactionPri.oldest_smallest_seq_first
+            if self.copts.compaction_pri == options.kMinOverlappingRatio:
+                return CompactionPri.min_overlapping_ratio
+        def __set__(self, value):
+            if value == CompactionPri.by_compensated_size:
+                self.copts.compaction_pri = options.kByCompensatedSize
+            elif value == CompactionPri.oldest_largest_seq_first:
+                self.copts.compaction_pri = options.kOldestLargestSeqFirst
+            elif value == CompactionPri.oldest_smallest_seq_first:
+                self.copts.compaction_pri = options.kOldestSmallestSeqFirst
+            elif value == CompactionPri.min_overlapping_ratio:
+                self.copts.compaction_pri = options.kMinOverlappingRatio
+            else:
+                raise TypeError("Unknown compaction pri: %s" % value)
+
+    property compression:
+        def __get__(self):
+            if self.copts.compression == options.kNoCompression:
+                return CompressionType.no_compression
+            elif self.copts.compression  == options.kSnappyCompression:
+                return CompressionType.snappy_compression
+            elif self.copts.compression == options.kZlibCompression:
+                return CompressionType.zlib_compression
+            elif self.copts.compression == options.kBZip2Compression:
+                return CompressionType.bzip2_compression
+            elif self.copts.compression == options.kLZ4Compression:
+                return CompressionType.lz4_compression
+            elif self.copts.compression == options.kLZ4HCCompression:
+                return CompressionType.lz4hc_compression
+            elif self.copts.compression == options.kXpressCompression:
+                return CompressionType.xpress_compression
+            elif self.copts.compression == options.kZSTD:
+                return CompressionType.zstd_compression
+            elif self.copts.compression == options.kZSTDNotFinalCompression:
+                return CompressionType.zstdnotfinal_compression
+            elif self.copts.compression == options.kDisableCompressionOption:
+                return CompressionType.disable_compression
+            else:
+                raise Exception("Unknonw type: %s" % self.opts.compression)
+
+        def __set__(self, value):
+            if value == CompressionType.no_compression:
+                self.copts.compression = options.kNoCompression
+            elif value == CompressionType.snappy_compression:
+                self.copts.compression = options.kSnappyCompression
+            elif value == CompressionType.zlib_compression:
+                self.copts.compression = options.kZlibCompression
+            elif value == CompressionType.bzip2_compression:
+                self.copts.compression = options.kBZip2Compression
+            elif value == CompressionType.lz4_compression:
+                self.copts.compression = options.kLZ4Compression
+            elif value == CompressionType.lz4hc_compression:
+                self.copts.compression = options.kLZ4HCCompression
+            elif value == CompressionType.zstd_compression:
+                self.copts.compression = options.kZSTD
+            elif value == CompressionType.zstdnotfinal_compression:
+                self.copts.compression = options.kZSTDNotFinalCompression
+            elif value == CompressionType.disable_compression:
+                self.copts.compression = options.kDisableCompressionOption
+            else:
+                raise TypeError("Unknown compression: %s" % value)
+
+    property max_compaction_bytes:
+        def __get__(self):
+            return self.copts.max_compaction_bytes
+        def __set__(self, value):
+            self.copts.max_compaction_bytes = value
+
+    property num_levels:
+        def __get__(self):
+            return self.copts.num_levels
+        def __set__(self, value):
+            self.copts.num_levels = value
+
+    property level0_file_num_compaction_trigger:
+        def __get__(self):
+            return self.copts.level0_file_num_compaction_trigger
+        def __set__(self, value):
+            self.copts.level0_file_num_compaction_trigger = value
+
+    property level0_slowdown_writes_trigger:
+        def __get__(self):
+            return self.copts.level0_slowdown_writes_trigger
+        def __set__(self, value):
+            self.copts.level0_slowdown_writes_trigger = value
+
+    property level0_stop_writes_trigger:
+        def __get__(self):
+            return self.copts.level0_stop_writes_trigger
+        def __set__(self, value):
+            self.copts.level0_stop_writes_trigger = value
+
+    property max_mem_compaction_level:
+        def __get__(self):
+            return self.copts.max_mem_compaction_level
+        def __set__(self, value):
+            self.copts.max_mem_compaction_level = value
+
+    property target_file_size_base:
+        def __get__(self):
+            return self.copts.target_file_size_base
+        def __set__(self, value):
+            self.copts.target_file_size_base = value
+
+    property target_file_size_multiplier:
+        def __get__(self):
+            return self.copts.target_file_size_multiplier
+        def __set__(self, value):
+            self.copts.target_file_size_multiplier = value
+
+    property max_bytes_for_level_base:
+        def __get__(self):
+            return self.copts.max_bytes_for_level_base
+        def __set__(self, value):
+            self.copts.max_bytes_for_level_base = value
+
+    property max_bytes_for_level_multiplier:
+        def __get__(self):
+            return self.copts.max_bytes_for_level_multiplier
+        def __set__(self, value):
+            self.copts.max_bytes_for_level_multiplier = value
+
+    property max_bytes_for_level_multiplier_additional:
+        def __get__(self):
+            return self.copts.max_bytes_for_level_multiplier_additional
+        def __set__(self, value):
+            self.copts.max_bytes_for_level_multiplier_additional = value
+
+    property soft_rate_limit:
+        def __get__(self):
+            return self.copts.soft_rate_limit
+        def __set__(self, value):
+            self.copts.soft_rate_limit = value
+
+    property hard_rate_limit:
+        def __get__(self):
+            return self.copts.hard_rate_limit
+        def __set__(self, value):
+            self.copts.hard_rate_limit = value
+
+    property rate_limit_delay_max_milliseconds:
+        def __get__(self):
+            return self.copts.rate_limit_delay_max_milliseconds
+        def __set__(self, value):
+            self.copts.rate_limit_delay_max_milliseconds = value
+
+    property arena_block_size:
+        def __get__(self):
+            return self.copts.arena_block_size
+        def __set__(self, value):
+            self.copts.arena_block_size = value
+
+    property disable_auto_compactions:
+        def __get__(self):
+            return self.copts.disable_auto_compactions
+        def __set__(self, value):
+            self.copts.disable_auto_compactions = value
+
+    property purge_redundant_kvs_while_flush:
+        def __get__(self):
+            return self.copts.purge_redundant_kvs_while_flush
+        def __set__(self, value):
+            self.copts.purge_redundant_kvs_while_flush = value
+
+    # FIXME: remove to util/options_helper.h
+    #  property allow_os_buffer:
+        #  def __get__(self):
+            #  return self.copts.allow_os_buffer
+        #  def __set__(self, value):
+            #  self.copts.allow_os_buffer = value
+
+    property compaction_style:
+        def __get__(self):
+            if self.copts.compaction_style == kCompactionStyleLevel:
+                return 'level'
+            if self.copts.compaction_style == kCompactionStyleUniversal:
+                return 'universal'
+            if self.copts.compaction_style == kCompactionStyleFIFO:
+                return 'fifo'
+            if self.copts.compaction_style == kCompactionStyleNone:
+                return 'none'
+            raise Exception("Unknown compaction_style")
+
+        def __set__(self, str value):
+            if value == 'level':
+                self.copts.compaction_style = kCompactionStyleLevel
+            elif value == 'universal':
+                self.copts.compaction_style = kCompactionStyleUniversal
+            elif value == 'fifo':
+                self.copts.compaction_style = kCompactionStyleFIFO
+            elif value == 'none':
+                self.copts.compaction_style = kCompactionStyleNone
+            else:
+                raise Exception("Unknown compaction style")
+
+    property compaction_options_universal:
+        def __get__(self):
+            cdef universal_compaction.CompactionOptionsUniversal uopts
+            cdef dict ret_ob = {}
+
+            uopts = self.copts.compaction_options_universal
+
+            ret_ob['size_ratio'] = uopts.size_ratio
+            ret_ob['min_merge_width'] = uopts.min_merge_width
+            ret_ob['max_merge_width'] = uopts.max_merge_width
+            ret_ob['max_size_amplification_percent'] = uopts.max_size_amplification_percent
+            ret_ob['compression_size_percent'] = uopts.compression_size_percent
+
+            if uopts.stop_style == kCompactionStopStyleSimilarSize:
+                ret_ob['stop_style'] = 'similar_size'
+            elif uopts.stop_style == kCompactionStopStyleTotalSize:
+                ret_ob['stop_style'] = 'total_size'
+            else:
+                raise Exception("Unknown compaction style")
+
+            return ret_ob
+
+        def __set__(self, dict value):
+            cdef universal_compaction.CompactionOptionsUniversal* uopts
+            uopts = cython.address(self.copts.compaction_options_universal)
+
+            if 'size_ratio' in value:
+                uopts.size_ratio  = value['size_ratio']
+
+            if 'min_merge_width' in value:
+                uopts.min_merge_width = value['min_merge_width']
+
+            if 'max_merge_width' in value:
+                uopts.max_merge_width = value['max_merge_width']
+
+            if 'max_size_amplification_percent' in value:
+                uopts.max_size_amplification_percent = value['max_size_amplification_percent']
+
+            if 'compression_size_percent' in value:
+                uopts.compression_size_percent = value['compression_size_percent']
+
+            if 'stop_style' in value:
+                if value['stop_style'] == 'similar_size':
+                    uopts.stop_style = kCompactionStopStyleSimilarSize
+                elif value['stop_style'] == 'total_size':
+                    uopts.stop_style = kCompactionStopStyleTotalSize
+                else:
+                    raise Exception("Unknown compaction style")
+
+    # Deprecate
+    #  property filter_deletes:
+        #  def __get__(self):
+            #  return self.copts.filter_deletes
+        #  def __set__(self, value):
+            #  self.copts.filter_deletes = value
+
+    property max_sequential_skip_in_iterations:
+        def __get__(self):
+            return self.copts.max_sequential_skip_in_iterations
+        def __set__(self, value):
+            self.copts.max_sequential_skip_in_iterations = value
+
+    property inplace_update_support:
+        def __get__(self):
+            return self.copts.inplace_update_support
+        def __set__(self, value):
+            self.copts.inplace_update_support = value
+
+    property table_factory:
+        def __get__(self):
+            return self.py_table_factory
+
+        def __set__(self, PyTableFactory value):
+            self.py_table_factory = value
+            self.copts.table_factory = value.get_table_factory()
+
+    property memtable_factory:
+        def __get__(self):
+            return self.py_memtable_factory
+
+        def __set__(self, PyMemtableFactory value):
+            self.py_memtable_factory = value
+            self.copts.memtable_factory = value.get_memtable_factory()
+
+    property inplace_update_num_locks:
+        def __get__(self):
+            return self.copts.inplace_update_num_locks
+        def __set__(self, value):
+            self.copts.inplace_update_num_locks = value
+
+    property comparator:
+        def __get__(self):
+            return self.py_comparator.get_ob()
+
+        def __set__(self, value):
+            if isinstance(value, PyComparator):
+                if (<PyComparator?>value).get_comparator() == NULL:
+                    raise Exception("Cannot set %s as comparator" % value)
+                else:
+                    self.py_comparator = value
+            else:
+                self.py_comparator = PyGenericComparator(value)
+
+            self.copts.comparator = self.py_comparator.get_comparator()
+
+    property merge_operator:
+        def __get__(self):
+            if self.py_merge_operator is None:
+                return None
+            return self.py_merge_operator.get_ob()
+
+        def __set__(self, value):
+            self.py_merge_operator = PyMergeOperator(value)
+            self.copts.merge_operator = self.py_merge_operator.get_operator()
+
+    property prefix_extractor:
+        def __get__(self):
+            if self.py_prefix_extractor is None:
+                return None
+            return self.py_prefix_extractor.get_ob()
+
+        def __set__(self, value):
+            self.py_prefix_extractor = PySliceTransform(value)
+            self.copts.prefix_extractor = self.py_prefix_extractor.get_transformer()
+
+
+cdef class Options(ColumnFamilyOptions):
+    cdef options.Options* opts
+    cdef PyCache py_row_cache
+
+    def __cinit__(self):
+        # Destroy the existing ColumnFamilyOptions()
+        del self.copts
+        self.opts = NULL
+        self.copts = self.opts = new options.Options()
+        self.in_use = False
+
+    def __dealloc__(self):
+        if not self.opts == NULL:
+            self.copts = NULL
+            del self.opts
+
+    def __init__(self, **kwargs):
+        ColumnFamilyOptions.__init__(self)
         self.py_row_cache = None
 
         for key, value in kwargs.items():
@@ -783,189 +1278,11 @@ cdef class Options(object):
         def __set__(self, value):
             self.opts.paranoid_checks = value
 
-    property write_buffer_size:
-        def __get__(self):
-            return self.opts.write_buffer_size
-        def __set__(self, value):
-            self.opts.write_buffer_size = value
-
-    property max_write_buffer_number:
-        def __get__(self):
-            return self.opts.max_write_buffer_number
-        def __set__(self, value):
-            self.opts.max_write_buffer_number = value
-
-    property max_compaction_bytes:
-        def __get__(self):
-            return self.opts.max_compaction_bytes
-        def __set__(self, value):
-            self.opts.max_compaction_bytes = value
-
-    property min_write_buffer_number_to_merge:
-        def __get__(self):
-            return self.opts.min_write_buffer_number_to_merge
-        def __set__(self, value):
-            self.opts.min_write_buffer_number_to_merge = value
-
     property max_open_files:
         def __get__(self):
             return self.opts.max_open_files
         def __set__(self, value):
             self.opts.max_open_files = value
-
-    property compression_opts:
-        def __get__(self):
-            cdef dict ret_ob = {}
-
-            ret_ob['window_bits'] = self.opts.compression_opts.window_bits
-            ret_ob['level'] = self.opts.compression_opts.level
-            ret_ob['strategy'] = self.opts.compression_opts.strategy
-            ret_ob['max_dict_bytes'] = self.opts.compression_opts.max_dict_bytes
-
-            return ret_ob
-
-        def __set__(self, dict value):
-            cdef options.CompressionOptions* copts
-            copts = cython.address(self.opts.compression_opts)
-            #  CompressionOptions(int wbits, int _lev, int _strategy, int _max_dict_bytes)
-            if 'window_bits' in value:
-                copts.window_bits  = value['window_bits']
-            if 'level' in value:
-                copts.level = value['level']
-            if 'strategy' in value:
-                copts.strategy = value['strategy']
-            if 'max_dict_bytes' in value:
-                copts.max_dict_bytes = value['max_dict_bytes']
-
-    property compaction_pri:
-        def __get__(self):
-            if self.opts.compaction_pri == options.kByCompensatedSize:
-                return CompactionPri.by_compensated_size
-            if self.opts.compaction_pri == options.kOldestLargestSeqFirst:
-                return CompactionPri.oldest_largest_seq_first
-            if self.opts.compaction_pri == options.kOldestSmallestSeqFirst:
-                return CompactionPri.oldest_smallest_seq_first
-            if self.opts.compaction_pri == options.kMinOverlappingRatio:
-                return CompactionPri.min_overlapping_ratio
-        def __set__(self, value):
-            if value == CompactionPri.by_compensated_size:
-                self.opts.compaction_pri = options.kByCompensatedSize
-            elif value == CompactionPri.oldest_largest_seq_first:
-                self.opts.compaction_pri = options.kOldestLargestSeqFirst
-            elif value == CompactionPri.oldest_smallest_seq_first:
-                self.opts.compaction_pri = options.kOldestSmallestSeqFirst
-            elif value == CompactionPri.min_overlapping_ratio:
-                self.opts.compaction_pri = options.kMinOverlappingRatio
-            else:
-                raise TypeError("Unknown compaction pri: %s" % value)
-
-
-    property compression:
-        def __get__(self):
-            if self.opts.compression == options.kNoCompression:
-                return CompressionType.no_compression
-            elif self.opts.compression  == options.kSnappyCompression:
-                return CompressionType.snappy_compression
-            elif self.opts.compression == options.kZlibCompression:
-                return CompressionType.zlib_compression
-            elif self.opts.compression == options.kBZip2Compression:
-                return CompressionType.bzip2_compression
-            elif self.opts.compression == options.kLZ4Compression:
-                return CompressionType.lz4_compression
-            elif self.opts.compression == options.kLZ4HCCompression:
-                return CompressionType.lz4hc_compression
-            elif self.opts.compression == options.kXpressCompression:
-                return CompressionType.xpress_compression
-            elif self.opts.compression == options.kZSTD:
-                return CompressionType.zstd_compression
-            elif self.opts.compression == options.kZSTDNotFinalCompression:
-                return CompressionType.zstdnotfinal_compression
-            elif self.opts.compression == options.kDisableCompressionOption:
-                return CompressionType.disable_compression
-            else:
-                raise Exception("Unknonw type: %s" % self.opts.compression)
-
-        def __set__(self, value):
-            if value == CompressionType.no_compression:
-                self.opts.compression = options.kNoCompression
-            elif value == CompressionType.snappy_compression:
-                self.opts.compression = options.kSnappyCompression
-            elif value == CompressionType.zlib_compression:
-                self.opts.compression = options.kZlibCompression
-            elif value == CompressionType.bzip2_compression:
-                self.opts.compression = options.kBZip2Compression
-            elif value == CompressionType.lz4_compression:
-                self.opts.compression = options.kLZ4Compression
-            elif value == CompressionType.lz4hc_compression:
-                self.opts.compression = options.kLZ4HCCompression
-            elif value == CompressionType.zstd_compression:
-                self.opts.compression = options.kZSTD
-            elif value == CompressionType.zstdnotfinal_compression:
-                self.opts.compression = options.kZSTDNotFinalCompression
-            elif value == CompressionType.disable_compression:
-                self.opts.compression = options.kDisableCompressionOption
-            else:
-                raise TypeError("Unknown compression: %s" % value)
-
-    property num_levels:
-        def __get__(self):
-            return self.opts.num_levels
-        def __set__(self, value):
-            self.opts.num_levels = value
-
-    property level0_file_num_compaction_trigger:
-        def __get__(self):
-            return self.opts.level0_file_num_compaction_trigger
-        def __set__(self, value):
-            self.opts.level0_file_num_compaction_trigger = value
-
-    property level0_slowdown_writes_trigger:
-        def __get__(self):
-            return self.opts.level0_slowdown_writes_trigger
-        def __set__(self, value):
-            self.opts.level0_slowdown_writes_trigger = value
-
-    property level0_stop_writes_trigger:
-        def __get__(self):
-            return self.opts.level0_stop_writes_trigger
-        def __set__(self, value):
-            self.opts.level0_stop_writes_trigger = value
-
-    property max_mem_compaction_level:
-        def __get__(self):
-            return self.opts.max_mem_compaction_level
-        def __set__(self, value):
-            self.opts.max_mem_compaction_level = value
-
-    property target_file_size_base:
-        def __get__(self):
-            return self.opts.target_file_size_base
-        def __set__(self, value):
-            self.opts.target_file_size_base = value
-
-    property target_file_size_multiplier:
-        def __get__(self):
-            return self.opts.target_file_size_multiplier
-        def __set__(self, value):
-            self.opts.target_file_size_multiplier = value
-
-    property max_bytes_for_level_base:
-        def __get__(self):
-            return self.opts.max_bytes_for_level_base
-        def __set__(self, value):
-            self.opts.max_bytes_for_level_base = value
-
-    property max_bytes_for_level_multiplier:
-        def __get__(self):
-            return self.opts.max_bytes_for_level_multiplier
-        def __set__(self, value):
-            self.opts.max_bytes_for_level_multiplier = value
-
-    property max_bytes_for_level_multiplier_additional:
-        def __get__(self):
-            return self.opts.max_bytes_for_level_multiplier_additional
-        def __set__(self, value):
-            self.opts.max_bytes_for_level_multiplier_additional = value
 
     property use_fsync:
         def __get__(self):
@@ -1021,24 +1338,6 @@ cdef class Options(object):
         def __set__(self, value):
             self.opts.keep_log_file_num = value
 
-    property soft_rate_limit:
-        def __get__(self):
-            return self.opts.soft_rate_limit
-        def __set__(self, value):
-            self.opts.soft_rate_limit = value
-
-    property hard_rate_limit:
-        def __get__(self):
-            return self.opts.hard_rate_limit
-        def __set__(self, value):
-            self.opts.hard_rate_limit = value
-
-    property rate_limit_delay_max_milliseconds:
-        def __get__(self):
-            return self.opts.rate_limit_delay_max_milliseconds
-        def __set__(self, value):
-            self.opts.rate_limit_delay_max_milliseconds = value
-
     property max_manifest_file_size:
         def __get__(self):
             return self.opts.max_manifest_file_size
@@ -1050,18 +1349,6 @@ cdef class Options(object):
             return self.opts.table_cache_numshardbits
         def __set__(self, value):
             self.opts.table_cache_numshardbits = value
-
-    property arena_block_size:
-        def __get__(self):
-            return self.opts.arena_block_size
-        def __set__(self, value):
-            self.opts.arena_block_size = value
-
-    property disable_auto_compactions:
-        def __get__(self):
-            return self.opts.disable_auto_compactions
-        def __set__(self, value):
-            self.opts.disable_auto_compactions = value
 
     property wal_ttl_seconds:
         def __get__(self):
@@ -1080,19 +1367,6 @@ cdef class Options(object):
             return self.opts.manifest_preallocation_size
         def __set__(self, value):
             self.opts.manifest_preallocation_size = value
-
-    property purge_redundant_kvs_while_flush:
-        def __get__(self):
-            return self.opts.purge_redundant_kvs_while_flush
-        def __set__(self, value):
-            self.opts.purge_redundant_kvs_while_flush = value
-
-    # FIXME: remove to util/options_helper.h
-    #  property allow_os_buffer:
-        #  def __get__(self):
-            #  return self.opts.allow_os_buffer
-        #  def __set__(self, value):
-            #  self.opts.allow_os_buffer = value
 
     property enable_write_thread_adaptive_yield:
         def __get__(self):
@@ -1142,6 +1416,13 @@ cdef class Options(object):
         def __set__(self, value):
             self.opts.advise_random_on_open = value
 
+  # TODO: need to remove -Wconversion to make this work
+  # property access_hint_on_compaction_start:
+  #     def __get__(self):
+  #         return self.opts.access_hint_on_compaction_start
+  #     def __set__(self, AccessHint value):
+  #         self.opts.access_hint_on_compaction_start = value
+
     property use_adaptive_mutex:
         def __get__(self):
             return self.opts.use_adaptive_mutex
@@ -1153,155 +1434,6 @@ cdef class Options(object):
             return self.opts.bytes_per_sync
         def __set__(self, value):
             self.opts.bytes_per_sync = value
-
-    property compaction_style:
-        def __get__(self):
-            if self.opts.compaction_style == kCompactionStyleLevel:
-                return 'level'
-            if self.opts.compaction_style == kCompactionStyleUniversal:
-                return 'universal'
-            if self.opts.compaction_style == kCompactionStyleFIFO:
-                return 'fifo'
-            if self.opts.compaction_style == kCompactionStyleNone:
-                return 'none'
-            raise Exception("Unknown compaction_style")
-
-        def __set__(self, str value):
-            if value == 'level':
-                self.opts.compaction_style = kCompactionStyleLevel
-            elif value == 'universal':
-                self.opts.compaction_style = kCompactionStyleUniversal
-            elif value == 'fifo':
-                self.opts.compaction_style = kCompactionStyleFIFO
-            elif value == 'none':
-                self.opts.compaction_style = kCompactionStyleNone
-            else:
-                raise Exception("Unknown compaction style")
-
-    property compaction_options_universal:
-        def __get__(self):
-            cdef universal_compaction.CompactionOptionsUniversal uopts
-            cdef dict ret_ob = {}
-
-            uopts = self.opts.compaction_options_universal
-
-            ret_ob['size_ratio'] = uopts.size_ratio
-            ret_ob['min_merge_width'] = uopts.min_merge_width
-            ret_ob['max_merge_width'] = uopts.max_merge_width
-            ret_ob['max_size_amplification_percent'] = uopts.max_size_amplification_percent
-            ret_ob['compression_size_percent'] = uopts.compression_size_percent
-
-            if uopts.stop_style == kCompactionStopStyleSimilarSize:
-                ret_ob['stop_style'] = 'similar_size'
-            elif uopts.stop_style == kCompactionStopStyleTotalSize:
-                ret_ob['stop_style'] = 'total_size'
-            else:
-                raise Exception("Unknown compaction style")
-
-            return ret_ob
-
-        def __set__(self, dict value):
-            cdef universal_compaction.CompactionOptionsUniversal* uopts
-            uopts = cython.address(self.opts.compaction_options_universal)
-
-            if 'size_ratio' in value:
-                uopts.size_ratio  = value['size_ratio']
-
-            if 'min_merge_width' in value:
-                uopts.min_merge_width = value['min_merge_width']
-
-            if 'max_merge_width' in value:
-                uopts.max_merge_width = value['max_merge_width']
-
-            if 'max_size_amplification_percent' in value:
-                uopts.max_size_amplification_percent = value['max_size_amplification_percent']
-
-            if 'compression_size_percent' in value:
-                uopts.compression_size_percent = value['compression_size_percent']
-
-            if 'stop_style' in value:
-                if value['stop_style'] == 'similar_size':
-                    uopts.stop_style = kCompactionStopStyleSimilarSize
-                elif value['stop_style'] == 'total_size':
-                    uopts.stop_style = kCompactionStopStyleTotalSize
-                else:
-                    raise Exception("Unknown compaction style")
-
-    # Deprecate 
-    #  property filter_deletes:
-        #  def __get__(self):
-            #  return self.opts.filter_deletes
-        #  def __set__(self, value):
-            #  self.opts.filter_deletes = value
-
-    property max_sequential_skip_in_iterations:
-        def __get__(self):
-            return self.opts.max_sequential_skip_in_iterations
-        def __set__(self, value):
-            self.opts.max_sequential_skip_in_iterations = value
-
-    property inplace_update_support:
-        def __get__(self):
-            return self.opts.inplace_update_support
-        def __set__(self, value):
-            self.opts.inplace_update_support = value
-
-    property table_factory:
-        def __get__(self):
-            return self.py_table_factory
-
-        def __set__(self, PyTableFactory value):
-            self.py_table_factory = value
-            self.opts.table_factory = value.get_table_factory()
-
-    property memtable_factory:
-        def __get__(self):
-            return self.py_memtable_factory
-
-        def __set__(self, PyMemtableFactory value):
-            self.py_memtable_factory = value
-            self.opts.memtable_factory = value.get_memtable_factory()
-
-    property inplace_update_num_locks:
-        def __get__(self):
-            return self.opts.inplace_update_num_locks
-        def __set__(self, value):
-            self.opts.inplace_update_num_locks = value
-
-    property comparator:
-        def __get__(self):
-            return self.py_comparator.get_ob()
-
-        def __set__(self, value):
-            if isinstance(value, PyComparator):
-                if (<PyComparator?>value).get_comparator() == NULL:
-                    raise Exception("Cannot set %s as comparator" % value)
-                else:
-                    self.py_comparator = value
-            else:
-                self.py_comparator = PyGenericComparator(value)
-
-            self.opts.comparator = self.py_comparator.get_comparator()
-
-    property merge_operator:
-        def __get__(self):
-            if self.py_merge_operator is None:
-                return None
-            return self.py_merge_operator.get_ob()
-
-        def __set__(self, value):
-            self.py_merge_operator = PyMergeOperator(value)
-            self.opts.merge_operator = self.py_merge_operator.get_operator()
-
-    property prefix_extractor:
-        def __get__(self):
-            if self.py_prefix_extractor is None:
-                return None
-            return self.py_prefix_extractor.get_ob()
-
-        def __set__(self, value):
-            self.py_prefix_extractor = PySliceTransform(value)
-            self.opts.prefix_extractor = self.py_prefix_extractor.get_transformer()
 
     property row_cache:
         def __get__(self):
@@ -1344,13 +1476,28 @@ cdef class WriteBatch(object):
             del self.batch
 
     def put(self, key, value):
-        self.batch.Put(bytes_to_slice(key), bytes_to_slice(value))
+        cdef db.ColumnFamilyHandle* cf_handle = NULL
+        if isinstance(key, tuple):
+            column_family, key = key
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
+        # nullptr is default family
+        self.batch.Put(cf_handle, bytes_to_slice(key), bytes_to_slice(value))
 
     def merge(self, key, value):
-        self.batch.Merge(bytes_to_slice(key), bytes_to_slice(value))
+        cdef db.ColumnFamilyHandle* cf_handle = NULL
+        if isinstance(key, tuple):
+            column_family, key = key
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
+        # nullptr is default family
+        self.batch.Merge(cf_handle, bytes_to_slice(key), bytes_to_slice(value))
 
     def delete(self, key):
-        self.batch.Delete(bytes_to_slice(key))
+        cdef db.ColumnFamilyHandle* cf_handle = NULL
+        if isinstance(key, tuple):
+            column_family, key = key
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
+        # nullptr is default family
+        self.batch.Delete(cf_handle, bytes_to_slice(key))
 
     def clear(self):
         self.batch.Clear()
@@ -1398,11 +1545,21 @@ cdef class WriteBatchIterator(object):
         elif self.items[self.pos].op == db.BatchItemOpDelte:
             op = "Delete"
 
-        ret = (
-            op,
-            slice_to_bytes(self.items[self.pos].key),
-            slice_to_bytes(self.items[self.pos].value))
-
+        if self.items[self.pos].column_family_id != 0:  # Column Family is set
+            ret = (
+                op,
+                (
+                    self.items[self.pos].column_family_id,
+                    slice_to_bytes(self.items[self.pos].key)
+                ),
+                slice_to_bytes(self.items[self.pos].value)
+            )
+        else:
+            ret = (
+                op,
+                slice_to_bytes(self.items[self.pos].key),
+                slice_to_bytes(self.items[self.pos].value)
+            )
         self.pos += 1
         return ret
 
@@ -1410,34 +1567,83 @@ cdef class WriteBatchIterator(object):
 cdef class DB(object):
     cdef Options opts
     cdef db.DB* db
+    cdef list cf_handles
+    cdef list cf_options
 
-    def __cinit__(self, db_name, Options opts, read_only=False):
+    def __cinit__(self, db_name, Options opts, dict column_families=None, read_only=False):
         cdef Status st
         cdef string db_path
+        cdef vector[db.ColumnFamilyDescriptor] column_family_descriptors
+        cdef vector[db.ColumnFamilyHandle*] column_family_handles
+        cdef bytes default_cf_name = db.kDefaultColumnFamilyName
         self.db = NULL
         self.opts = None
+        self.cf_handles = []
+        self.cf_options = []
 
         if opts.in_use:
             raise Exception("Options object is already used by another DB")
 
         db_path = path_to_string(db_name)
+        if not column_families or default_cf_name not in column_families:
+            # Always add the default column family
+            column_family_descriptors.push_back(
+                db.ColumnFamilyDescriptor(
+                    db.kDefaultColumnFamilyName,
+                    options.ColumnFamilyOptions(deref(opts.opts))
+                )
+            )
+            self.cf_options.append(None)  # Since they are the same as db
+        if column_families:
+            for cf_name, cf_options in column_families.items():
+                if not isinstance(cf_name, bytes):
+                    raise TypeError(
+                        f"column family name {cf_name!r} is not of type {bytes}!"
+                    )
+                if not isinstance(cf_options, ColumnFamilyOptions):
+                    raise TypeError(
+                        f"column family options {cf_options!r} is not of type "
+                        f"{ColumnFamilyOptions}!"
+                    )
+                if (<ColumnFamilyOptions>cf_options).in_use:
+                    raise Exception(
+                        f"ColumnFamilyOptions object for {cf_name} is already "
+                        "used by another Column Family"
+                    )
+                (<ColumnFamilyOptions>cf_options).in_use = True
+                column_family_descriptors.push_back(
+                    db.ColumnFamilyDescriptor(
+                        cf_name,
+                        deref((<ColumnFamilyOptions>cf_options).copts)
+                    )
+                )
+                self.cf_options.append(cf_options)
         if read_only:
             with nogil:
-                st = db.DB_OpenForReadOnly(
+                st = db.DB_OpenForReadOnly_ColumnFamilies(
                     deref(opts.opts),
                     db_path,
-                    cython.address(self.db),
+                    column_family_descriptors,
+                    &column_family_handles,
+                    &self.db,
                     False)
         else:
             with nogil:
-                st = db.DB_Open(
+                st = db.DB_Open_ColumnFamilies(
                     deref(opts.opts),
                     db_path,
-                    cython.address(self.db))
+                    column_family_descriptors,
+                    &column_family_handles,
+                    &self.db)
         check_status(st)
 
+        for handle in column_family_handles:
+            wrapper = _ColumnFamilyHandle.from_handle_ptr(handle)
+            self.cf_handles.append(wrapper)
+
         # Inject the loggers into the python callbacks
-        cdef shared_ptr[logger.Logger] info_log = self.db.GetOptions().info_log
+        cdef shared_ptr[logger.Logger] info_log = self.db.GetOptions(
+            self.db.DefaultColumnFamily()).info_log
         if opts.py_comparator is not None:
             opts.py_comparator.set_info_log(info_log)
 
@@ -1447,16 +1653,50 @@ cdef class DB(object):
         if opts.prefix_extractor is not None:
             opts.py_prefix_extractor.set_info_log(info_log)
 
+        cdef ColumnFamilyOptions copts
+        for idx, copts in enumerate(self.cf_options):
+            if not copts:
+                continue
+
+            info_log = self.db.GetOptions(column_family_handles[idx]).info_log
+
+            if copts.py_comparator is not None:
+                copts.py_comparator.set_info_log(info_log)
+
+            if copts.py_table_factory is not None:
+                copts.py_table_factory.set_info_log(info_log)
+
+            if copts.prefix_extractor is not None:
+                copts.py_prefix_extractor.set_info_log(info_log)
+
         self.opts = opts
         self.opts.in_use = True
 
     def __dealloc__(self):
+        cdef ColumnFamilyOptions copts
         if not self.db == NULL:
+            # We have to make sure we delete the handles so rocksdb doesn't
+            # assert when we delete the db
+            self.cf_handles.clear()
+            for copts in self.cf_options:
+                if copts:
+                    copts.in_use = False
+            self.cf_options.clear()
+
             with nogil:
                 del self.db
 
         if self.opts is not None:
             self.opts.in_use = False
+
+    @property
+    def column_families(self):
+        return [handle.weakref for handle in self.cf_handles]
+
+    def get_column_family(self, bytes name):
+        for handle in self.cf_handles:
+            if handle.name == name:
+                return handle.weakref
 
     def put(self, key, value, sync=False, disable_wal=False):
         cdef Status st
@@ -1464,11 +1704,19 @@ cdef class DB(object):
         opts.sync = sync
         opts.disableWAL = disable_wal
 
+        if isinstance(key, tuple):
+            column_family, key = key
+        else:
+            column_family = None
+
         cdef Slice c_key = bytes_to_slice(key)
         cdef Slice c_value = bytes_to_slice(value)
+        cdef db.ColumnFamilyHandle* cf_handle = self.db.DefaultColumnFamily()
+        if column_family:
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
 
         with nogil:
-            st = self.db.Put(opts, c_key, c_value)
+            st = self.db.Put(opts, cf_handle, c_key, c_value)
         check_status(st)
 
     def delete(self, key, sync=False, disable_wal=False):
@@ -1477,9 +1725,18 @@ cdef class DB(object):
         opts.sync = sync
         opts.disableWAL = disable_wal
 
+        if isinstance(key, tuple):
+            column_family, key = key
+        else:
+            column_family = None
+
         cdef Slice c_key = bytes_to_slice(key)
+        cdef db.ColumnFamilyHandle* cf_handle = self.db.DefaultColumnFamily()
+        if column_family:
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
+
         with nogil:
-            st = self.db.Delete(opts, c_key)
+            st = self.db.Delete(opts, cf_handle, c_key)
         check_status(st)
 
     def merge(self, key, value, sync=False, disable_wal=False):
@@ -1488,10 +1745,19 @@ cdef class DB(object):
         opts.sync = sync
         opts.disableWAL = disable_wal
 
+        if isinstance(key, tuple):
+            column_family, key = key
+        else:
+            column_family = None
+
         cdef Slice c_key = bytes_to_slice(key)
         cdef Slice c_value = bytes_to_slice(value)
+        cdef db.ColumnFamilyHandle* cf_handle = self.db.DefaultColumnFamily()
+        if column_family:
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
+
         with nogil:
-            st = self.db.Merge(opts, c_key, c_value)
+            st = self.db.Merge(opts, cf_handle, c_key, c_value)
         check_status(st)
 
     def write(self, WriteBatch batch, sync=False, disable_wal=False):
@@ -1510,10 +1776,19 @@ cdef class DB(object):
         cdef options.ReadOptions opts
 
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
+
+        if isinstance(key, tuple):
+            column_family, key = key
+        else:
+            column_family = None
+
         cdef Slice c_key = bytes_to_slice(key)
+        cdef db.ColumnFamilyHandle* cf_handle = self.db.DefaultColumnFamily()
+        if column_family:
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
 
         with nogil:
-            st = self.db.Get(opts, c_key, cython.address(res))
+            st = self.db.Get(opts, cf_handle, c_key, cython.address(res))
 
         if st.ok():
             return string_to_bytes(res)
@@ -1526,9 +1801,17 @@ cdef class DB(object):
         cdef vector[string] values
         values.resize(len(keys))
 
+        cdef db.ColumnFamilyHandle* cf_handle
+        cdef vector[db.ColumnFamilyHandle*] cf_handles
         cdef vector[Slice] c_keys
         for key in keys:
+            if isinstance(key, tuple):
+                py_handle, key = key
+                cf_handle = (<ColumnFamilyHandle?>py_handle).get_handle()
+            else:
+                cf_handle = self.db.DefaultColumnFamily()
             c_keys.push_back(bytes_to_slice(key))
+            cf_handles.push_back(cf_handle)
 
         cdef options.ReadOptions opts
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
@@ -1537,6 +1820,7 @@ cdef class DB(object):
         with nogil:
             res = self.db.MultiGet(
                 opts,
+                cf_handles,
                 c_keys,
                 cython.address(values))
 
@@ -1557,7 +1841,12 @@ cdef class DB(object):
         cdef cpp_bool exists
         cdef options.ReadOptions opts
         cdef Slice c_key
+        cdef db.ColumnFamilyHandle* cf_handle = self.db.DefaultColumnFamily()
+
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
+        if isinstance(key, tuple):
+            column_family, key = key
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
 
         c_key = bytes_to_slice(key)
         exists = False
@@ -1567,6 +1856,7 @@ cdef class DB(object):
             with nogil:
                 exists = self.db.KeyMayExist(
                     opts,
+                    cf_handle,
                     c_key,
                     cython.address(value),
                     cython.address(value_found))
@@ -1582,56 +1872,143 @@ cdef class DB(object):
             with nogil:
                 exists = self.db.KeyMayExist(
                     opts,
+                    cf_handle,
                     c_key,
                     cython.address(value))
 
             return (exists, None)
 
-    def iterkeys(self, *args, **kwargs):
+    def iterkeys(self, ColumnFamilyHandle column_family=None, *args, **kwargs):
         cdef options.ReadOptions opts
         cdef KeysIterator it
+        cdef db.ColumnFamilyHandle* cf_handle = self.db.DefaultColumnFamily()
+        if column_family:
+            cf_handle = column_family.get_handle()
 
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
-        it = KeysIterator(self)
+        it = KeysIterator(self, column_family)
 
         with nogil:
-            it.ptr = self.db.NewIterator(opts)
+            it.ptr = self.db.NewIterator(opts, cf_handle)
         return it
 
-    def itervalues(self, *args, **kwargs):
+    def itervalues(self, ColumnFamilyHandle column_family=None, *args, **kwargs):
         cdef options.ReadOptions opts
         cdef ValuesIterator it
+        cdef db.ColumnFamilyHandle* cf_handle = self.db.DefaultColumnFamily()
+        if column_family:
+            cf_handle = column_family.get_handle()
 
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
 
         it = ValuesIterator(self)
 
         with nogil:
-            it.ptr = self.db.NewIterator(opts)
+            it.ptr = self.db.NewIterator(opts, cf_handle)
         return it
 
-    def iteritems(self, *args, **kwargs):
+    def iteritems(self, ColumnFamilyHandle column_family=None, *args, **kwargs):
         cdef options.ReadOptions opts
         cdef ItemsIterator it
-
+        cdef db.ColumnFamilyHandle* cf_handle = self.db.DefaultColumnFamily()
+        if column_family:
+            cf_handle = column_family.get_handle()
         opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
 
-        it = ItemsIterator(self)
+        it = ItemsIterator(self, column_family)
 
         with nogil:
-            it.ptr = self.db.NewIterator(opts)
+            it.ptr = self.db.NewIterator(opts, cf_handle)
         return it
+
+    def iterskeys(self, column_families, *args, **kwargs):
+        cdef vector[db.Iterator*] iters
+        iters.resize(len(column_families))
+        cdef options.ReadOptions opts
+        cdef db.Iterator* it_ptr
+        cdef KeysIterator it
+        cdef db.ColumnFamilyHandle* cf_handle
+        cdef vector[db.ColumnFamilyHandle*] cf_handles
+
+        for column_family in column_families:
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
+            cf_handles.push_back(cf_handle)
+
+        opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
+        with nogil:
+            self.db.NewIterators(opts, cf_handles, &iters)
+
+        cf_iter = iter(column_families)
+        cdef list ret = []
+        for it_ptr in iters:
+            it = KeysIterator(self, next(cf_iter))
+            it.ptr = it_ptr
+            ret.append(it)
+        return ret
+
+    def itersvalues(self, column_families, *args, **kwargs):
+        cdef vector[db.Iterator*] iters
+        iters.resize(len(column_families))
+        cdef options.ReadOptions opts
+        cdef db.Iterator* it_ptr
+        cdef ValuesIterator it
+        cdef db.ColumnFamilyHandle* cf_handle
+        cdef vector[db.ColumnFamilyHandle*] cf_handles
+
+        for column_family in column_families:
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
+            cf_handles.push_back(cf_handle)
+
+        opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
+        with nogil:
+            self.db.NewIterators(opts, cf_handles, &iters)
+
+        cdef list ret = []
+        for it_ptr in iters:
+            it = ValuesIterator(self)
+            it.ptr = it_ptr
+            ret.append(it)
+        return ret
+
+    def iterskeys(self, column_families, *args, **kwargs):
+        cdef vector[db.Iterator*] iters
+        iters.resize(len(column_families))
+        cdef options.ReadOptions opts
+        cdef db.Iterator* it_ptr
+        cdef ItemsIterator it
+        cdef db.ColumnFamilyHandle* cf_handle
+        cdef vector[db.ColumnFamilyHandle*] cf_handles
+
+        for column_family in column_families:
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
+            cf_handles.push_back(cf_handle)
+
+        opts = self.build_read_opts(self.__parse_read_opts(*args, **kwargs))
+        with nogil:
+            self.db.NewIterators(opts, cf_handles, &iters)
+
+
+        cf_iter = iter(column_families)
+        cdef list ret = []
+        for it_ptr in iters:
+            it = ItemsIterator(self, next(cf_iter))
+            it.ptr = it_ptr
+            ret.append(it)
+        return ret
 
     def snapshot(self):
         return Snapshot(self)
 
-    def get_property(self, prop):
+    def get_property(self, prop, ColumnFamilyHandle column_family=None):
         cdef string value
         cdef Slice c_prop = bytes_to_slice(prop)
         cdef cpp_bool ret = False
+        cdef db.ColumnFamilyHandle* cf_handle = self.db.DefaultColumnFamily()
+        if column_family:
+            cf_handle = column_family.get_handle()
 
         with nogil:
-            ret = self.db.GetProperty(c_prop, cython.address(value))
+            ret = self.db.GetProperty(cf_handle, c_prop, cython.address(value))
 
         if ret:
             return string_to_bytes(value)
@@ -1659,7 +2036,7 @@ cdef class DB(object):
 
         return ret
 
-    def compact_range(self, begin=None, end=None, **py_options):
+    def compact_range(self, begin=None, end=None, ColumnFamilyHandle column_family=None, **py_options):
         cdef options.CompactRangeOptions c_options
 
         c_options.change_level = py_options.get('change_level', False)
@@ -1693,7 +2070,11 @@ cdef class DB(object):
             end_val = bytes_to_slice(end)
             end_ptr = cython.address(end_val)
 
-        st = self.db.CompactRange(c_options, begin_ptr, end_ptr)
+        cdef db.ColumnFamilyHandle* cf_handle = self.db.DefaultColumnFamily()
+        if column_family:
+            cf_handle = (<ColumnFamilyHandle?>column_family).get_handle()
+
+        st = self.db.CompactRange(c_options, cf_handle, begin_ptr, end_ptr)
         check_status(st)
 
     @staticmethod
@@ -1726,6 +2107,48 @@ cdef class DB(object):
         def __get__(self):
             return self.opts
 
+    def create_column_family(self, bytes name, ColumnFamilyOptions copts):
+        cdef db.ColumnFamilyHandle* cf_handle
+        cdef Status st
+        cdef string c_name = name
+
+        for handle in self.cf_handles:
+            if handle.name == name:
+                raise ValueError(f"{name} is already an existing column family")
+
+        if copts.in_use:
+            raise Exception("ColumnFamilyOptions are in_use by another column family")
+
+        copts.in_use = True
+        with nogil:
+            st = self.db.CreateColumnFamily(deref(copts.copts), c_name, &cf_handle)
+        check_status(st)
+
+        handle = _ColumnFamilyHandle.from_handle_ptr(cf_handle)
+
+        self.cf_handles.append(handle)
+        self.cf_options.append(copts)
+        return handle.weakref
+
+    def drop_column_family(self, ColumnFamilyHandle weak_handle not None):
+        cdef db.ColumnFamilyHandle* cf_handle
+        cdef ColumnFamilyOptions copts
+        cdef Status st
+
+        cf_handle = weak_handle.get_handle()
+
+        with nogil:
+            st = self.db.DropColumnFamily(cf_handle)
+        check_status(st)
+
+        py_handle = weak_handle._ref()
+        index = self.cf_handles.index(py_handle)
+        copts = self.cf_options.pop(index)
+        del self.cf_handles[index]
+        del py_handle
+        if copts:
+            copts.in_use = False
+
 
 def repair_db(db_name, Options opts):
     cdef Status st
@@ -1734,6 +2157,19 @@ def repair_db(db_name, Options opts):
     db_path = path_to_string(db_name)
     st = db.RepairDB(db_path, deref(opts.opts))
     check_status(st)
+
+
+def list_column_families(db_name, Options opts):
+    cdef Status st
+    cdef string db_path
+    cdef vector[string] column_families
+
+    db_path = path_to_string(db_name)
+    with nogil:
+        st = db.ListColumnFamilies(deref(opts.opts), db_path, &column_families)
+    check_status(st)
+
+    return column_families
 
 
 @cython.no_gc_clear
@@ -1758,10 +2194,12 @@ cdef class Snapshot(object):
 cdef class BaseIterator(object):
     cdef iterator.Iterator* ptr
     cdef DB db
+    cdef ColumnFamilyHandle handle
 
-    def __cinit__(self, DB db):
+    def __cinit__(self, DB db, ColumnFamilyHandle handle = None):
         self.db = db
         self.ptr = NULL
+        self.handle = handle
 
     def __dealloc__(self):
         if not self.ptr == NULL:
@@ -1819,6 +2257,8 @@ cdef class KeysIterator(BaseIterator):
         with nogil:
             c_key = self.ptr.key()
         check_status(self.ptr.status())
+        if self.handle:
+            return self.handle, slice_to_bytes(c_key)
         return slice_to_bytes(c_key)
 
 @cython.internal
@@ -1839,6 +2279,8 @@ cdef class ItemsIterator(BaseIterator):
             c_key = self.ptr.key()
             c_value = self.ptr.value()
         check_status(self.ptr.status())
+        if self.handle:
+            return ((self.handle, slice_to_bytes(c_key)), slice_to_bytes(c_value))
         return (slice_to_bytes(c_key), slice_to_bytes(c_value))
 
 @cython.internal
