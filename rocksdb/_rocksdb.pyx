@@ -1671,6 +1671,9 @@ cdef class DB(object):
         self.opts.in_use = True
 
     def __dealloc__(self):
+        self.close()
+        
+    def close(self):
         cdef ColumnFamilyOptions copts
         if not self.db == NULL:
             # We have to make sure we delete the handles so rocksdb doesn't
