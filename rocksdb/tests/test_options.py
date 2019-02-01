@@ -39,7 +39,8 @@ class TestOptions(unittest.TestCase):
     def test_compaction_pri(self):
         opts = rocksdb.Options()
         # default compaction_pri
-        self.assertEqual(opts.compaction_pri, rocksdb.CompactionPri.by_compensated_size)
+        #  self.assertEqual(opts.compaction_pri, rocksdb.CompactionPri.by_compensated_size)
+        self.assertEqual(opts.compaction_pri, rocksdb.CompactionPri.min_overlapping_ratio)
         opts.compaction_pri = rocksdb.CompactionPri.by_compensated_size
         self.assertEqual(opts.compaction_pri, rocksdb.CompactionPri.by_compensated_size)
         opts.compaction_pri = rocksdb.CompactionPri.oldest_largest_seq_first
