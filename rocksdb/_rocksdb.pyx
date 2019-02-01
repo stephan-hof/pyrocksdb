@@ -657,8 +657,7 @@ cdef class PlainTableFactory(PyTableFactory):
             index_sparseness=10,
             huge_page_tlb_size=0,
             encoding_type='plain',
-            py_bool full_scan_mode=False,
-            py_bool store_index_in_file=False):
+            py_bool full_scan_mode=False):
 
         cdef table_factory.PlainTableOptions table_options
 
@@ -676,7 +675,6 @@ cdef class PlainTableFactory(PyTableFactory):
             raise ValueError("Unknown encoding_type: %s" % encoding_type)
 
         table_options.full_scan_mode = full_scan_mode
-        table_options.store_index_in_file = store_index_in_file
 
         self.factory.reset( table_factory.NewPlainTableFactory(table_options))
 #############################################
