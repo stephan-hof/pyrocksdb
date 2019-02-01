@@ -14,7 +14,7 @@ class UintAddOperator(AssociativeMergeOperator):
 class StringAppendOperator(AssociativeMergeOperator):
     def merge(self, key, existing_value, value):
         if existing_value:
-            s = existing_value + ',' + value
+            s = existing_value + b',' + value
             return (True, s)
         return (True, value)
 

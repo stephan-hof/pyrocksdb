@@ -6,37 +6,42 @@ import unittest
 import rocksdb
 from itertools import takewhile
 import struct
+import tempfile
 from rocksdb.merge_operators import UintAddOperator, StringAppendOperator
 
 def int_to_bytes(ob):
     return str(ob).encode('ascii')
 
-class TestHelper(object):
-    def _clean(self):
-        if os.path.exists('/tmp/test'):
-            shutil.rmtree("/tmp/test")
+class TestHelper(unittest.TestCase):
+
+    def setUp(self):
+        self.db_loc = tempfile.mkdtemp()
+        self.addCleanup(self._close_db)
 
     def _close_db(self):
         del self.db
         gc.collect()
+        if os.path.exists(self.db_loc):
+            shutil.rmtree(self.db_loc)
 
 
-class TestDB(unittest.TestCase, TestHelper):
+class TestDB(TestHelper):
     def setUp(self):
+        TestHelper.setUp(self)
         opts = rocksdb.Options(create_if_missing=True)
-        self._clean()
-        self.db = rocksdb.DB("/tmp/test", opts)
-
-    def tearDown(self):
-        self._close_db()
+        self.db = rocksdb.DB(os.path.join(self.db_loc, "test"), opts)
 
     def test_options_used_twice(self):
+        if sys.version_info[0] == 3:
+            assertRaisesRegex = self.assertRaisesRegex
+        else:
+            assertRaisesRegex = self.assertRaisesRegexp
         expected = "Options object is already used by another DB"
-        with self.assertRaisesRegexp(Exception, expected):
-            rocksdb.DB("/tmp/test2", self.db.options)
+        with assertRaisesRegex(Exception, expected):
+            rocksdb.DB(os.path.join(self.db_loc, "test2"), self.db.options)
 
     def test_unicode_path(self):
-        name = b'/tmp/M\xc3\xbcnchen'.decode('utf8')
+        name = os.path.join(self.db_loc, b'M\xc3\xbcnchen'.decode('utf8'))
         rocksdb.DB(name, rocksdb.Options(create_if_missing=True))
         self.addCleanup(shutil.rmtree, name)
         self.assertTrue(os.path.isdir(name))
@@ -280,16 +285,13 @@ class AssocCounter(rocksdb.interfaces.AssociativeMergeOperator):
         return b'AssocCounter'
 
 
-class TestUint64Merge(unittest.TestCase, TestHelper):
+class TestUint64Merge(TestHelper):
     def setUp(self):
+        TestHelper.setUp(self)
         opts = rocksdb.Options()
         opts.create_if_missing = True
         opts.merge_operator = UintAddOperator()
-        self._clean()
-        self.db = rocksdb.DB('/tmp/test', opts)
-
-    def tearDown(self):
-        self._close_db()
+        self.db = rocksdb.DB(os.path.join(self.db_loc, 'test'), opts)
 
     def test_merge(self):
         self.db.put(b'a', struct.pack('Q', 5566))
@@ -298,67 +300,55 @@ class TestUint64Merge(unittest.TestCase, TestHelper):
         self.assertEqual(5566 + sum(range(1000)), struct.unpack('Q', self.db.get(b'a'))[0])
 
 
-#  class TestPutMerge(unittest.TestCase, TestHelper):
+#  class TestPutMerge(TestHelper):
     #  def setUp(self):
+        #  TestHelper.setUp(self)
         #  opts = rocksdb.Options()
         #  opts.create_if_missing = True
         #  opts.merge_operator = "put"
-        #  self._clean()
-        #  self.db = rocksdb.DB('/tmp/test', opts)
-
-    #  def tearDown(self):
-        #  self._close_db()
+        #  self.db = rocksdb.DB(os.path.join(self.db_loc, 'test'), opts)
 
     #  def test_merge(self):
         #  self.db.put(b'a', b'ccc')
         #  self.db.merge(b'a', b'ddd')
         #  self.assertEqual(self.db.get(b'a'), 'ddd')
 
-#  class TestPutV1Merge(unittest.TestCase, TestHelper):
+#  class TestPutV1Merge(TestHelper):
     #  def setUp(self):
+        #  TestHelper.setUp(self)
         #  opts = rocksdb.Options()
         #  opts.create_if_missing = True
         #  opts.merge_operator = "put_v1"
-        #  self._clean()
-        #  self.db = rocksdb.DB('/tmp/test', opts)
-
-    #  def tearDown(self):
-        #  self._close_db()
+        #  self.db = rocksdb.DB(os.path.join(self.db_loc, 'test'), opts)
 
     #  def test_merge(self):
         #  self.db.put(b'a', b'ccc')
         #  self.db.merge(b'a', b'ddd')
         #  self.assertEqual(self.db.get(b'a'), 'ddd')
 
-class TestStringAppendOperatorMerge(unittest.TestCase, TestHelper):
+class TestStringAppendOperatorMerge(TestHelper):
     def setUp(self):
+        TestHelper.setUp(self)
         opts = rocksdb.Options()
         opts.create_if_missing = True
         opts.merge_operator = StringAppendOperator()
-        self._clean()
-        self.db = rocksdb.DB('/tmp/test', opts)
-
-    def tearDown(self):
-        self._close_db()
+        self.db = rocksdb.DB(os.path.join(self.db_loc, 'test'), opts)
 
     # NOTE(sileht): Raise "Corruption: Error: Could not perform merge." on PY3
-    @unittest.skipIf(sys.version_info[0] == 3,
-                     "Unexpected behavior on PY3")
+    #@unittest.skipIf(sys.version_info[0] == 3,
+    #                 "Unexpected behavior on PY3")
     def test_merge(self):
         self.db.put(b'a', b'ccc')
         self.db.merge(b'a', b'ddd')
         self.assertEqual(self.db.get(b'a'), b'ccc,ddd')
 
-#  class TestStringMaxOperatorMerge(unittest.TestCase, TestHelper):
+#  class TestStringMaxOperatorMerge(TestHelper):
     #  def setUp(self):
+        #  TestHelper.setUp(self)
         #  opts = rocksdb.Options()
         #  opts.create_if_missing = True
         #  opts.merge_operator = "max"
-        #  self._clean()
-        #  self.db = rocksdb.DB('/tmp/test', opts)
-
-    #  def tearDown(self):
-        #  self._close_db()
+        #  self.db = rocksdb.DB(os.path.join(self.db_loc, 'test'), opts)
 
     #  def test_merge(self):
         #  self.db.put(b'a', int_to_bytes(55))
@@ -366,16 +356,13 @@ class TestStringAppendOperatorMerge(unittest.TestCase, TestHelper):
         #  self.assertEqual(int(self.db.get(b'a')), 56)
 
 
-class TestAssocMerge(unittest.TestCase, TestHelper):
+class TestAssocMerge(TestHelper):
     def setUp(self):
+        TestHelper.setUp(self)
         opts = rocksdb.Options()
         opts.create_if_missing = True
         opts.merge_operator = AssocCounter()
-        self._clean()
-        self.db = rocksdb.DB('/tmp/test', opts)
-
-    def tearDown(self):
-        self._close_db()
+        self.db = rocksdb.DB(os.path.join(self.db_loc, 'test'), opts)
 
     def test_merge(self):
         for x in range(1000):
@@ -398,16 +385,13 @@ class FullCounter(rocksdb.interfaces.MergeOperator):
         return (True, int_to_bytes(int(left) + int(right)))
 
 
-class TestFullMerge(unittest.TestCase, TestHelper):
+class TestFullMerge(TestHelper):
     def setUp(self):
+        TestHelper.setUp(self)
         opts = rocksdb.Options()
         opts.create_if_missing = True
         opts.merge_operator = FullCounter()
-        self._clean()
-        self.db = rocksdb.DB('/tmp/test', opts)
-
-    def tearDown(self):
-        self._close_db()
+        self.db = rocksdb.DB(os.path.join(self.db_loc, 'test'), opts)
 
     def test_merge(self):
         for x in range(1000):
@@ -430,16 +414,13 @@ class SimpleComparator(rocksdb.interfaces.Comparator):
             return 1
 
 
-class TestComparator(unittest.TestCase, TestHelper):
+class TestComparator(TestHelper):
     def setUp(self):
+        TestHelper.setUp(self)
         opts = rocksdb.Options()
         opts.create_if_missing = True
         opts.comparator = SimpleComparator()
-        self._clean()
-        self.db = rocksdb.DB('/tmp/test', opts)
-
-    def tearDown(self):
-        self._close_db()
+        self.db = rocksdb.DB(os.path.join(self.db_loc, 'test'), opts)
 
     def test_compare(self):
         for x in range(1000):
@@ -460,15 +441,12 @@ class StaticPrefix(rocksdb.interfaces.SliceTransform):
     def in_range(self, dst):
         return len(dst) == 5
 
-class TestPrefixExtractor(unittest.TestCase, TestHelper):
+class TestPrefixExtractor(TestHelper):
     def setUp(self):
+        TestHelper.setUp(self)
         opts = rocksdb.Options(create_if_missing=True)
         opts.prefix_extractor = StaticPrefix()
-        self._clean()
-        self.db = rocksdb.DB('/tmp/test', opts)
-
-    def tearDown(self):
-        self._close_db()
+        self.db = rocksdb.DB(os.path.join(self.db_loc, 'test'), opts)
 
     def _fill_db(self):
         for x in range(3000):
@@ -502,3 +480,211 @@ class TestPrefixExtractor(unittest.TestCase, TestHelper):
         ref = {b'00002.z': b'z', b'00002.y': b'y', b'00002.x': b'x'}
         ret = takewhile(lambda item: item[0].startswith(b'00002'), it)
         self.assertEqual(ref, dict(ret))
+
+class TestDBColumnFamilies(TestHelper):
+    def setUp(self):
+        TestHelper.setUp(self)
+        opts = rocksdb.Options(create_if_missing=True)
+        self.db = rocksdb.DB(
+            os.path.join(self.db_loc, 'test'),
+            opts,
+        )
+
+        self.cf_a = self.db.create_column_family(b'A', rocksdb.ColumnFamilyOptions())
+        self.cf_b = self.db.create_column_family(b'B', rocksdb.ColumnFamilyOptions())
+
+    def test_column_families(self):
+        families = self.db.column_families
+        names = [handle.name for handle in families]
+        self.assertEqual([b'default', b'A', b'B'], names)
+        for name in names:
+            self.assertIn(self.db.get_column_family(name), families)
+
+        self.assertEqual(
+            names,
+            rocksdb.list_column_families(
+                os.path.join(self.db_loc, 'test'),
+                rocksdb.Options(),
+            )
+        )
+
+    def test_get_none(self):
+        self.assertIsNone(self.db.get(b'k'))
+        self.assertIsNone(self.db.get((self.cf_a, b'k')))
+        self.assertIsNone(self.db.get((self.cf_b, b'k')))
+
+    def test_put_get(self):
+        key = (self.cf_a, b'k')
+        self.db.put(key, b"v")
+        self.assertEqual(b"v", self.db.get(key))
+        self.assertIsNone(self.db.get(b"k"))
+        self.assertIsNone(self.db.get((self.cf_b, b"k")))
+
+    def test_multi_get(self):
+        data = [
+            (b'a', b'1default'),
+            (b'b', b'2default'),
+            (b'c', b'3default'),
+            ((self.cf_a, b'a'), b'1a'),
+            ((self.cf_a, b'b'), b'2a'),
+            ((self.cf_a, b'c'), b'3a'),
+            ((self.cf_b, b'a'), b'1b'),
+            ((self.cf_b, b'b'), b'2b'),
+            ((self.cf_b, b'c'), b'3b'),
+        ]
+        for value in data:
+            self.db.put(*value)
+
+        multi_get_lookup = [value[0] for value in data]
+
+        ret = self.db.multi_get(multi_get_lookup)
+        ref = {value[0]: value[1] for value in data}
+        self.assertEqual(ref, ret)
+
+    def test_delete(self):
+        self.db.put((self.cf_a, b"a"), b"b")
+        self.assertEqual(b"b", self.db.get((self.cf_a, b"a")))
+        self.db.delete((self.cf_a, b"a"))
+        self.assertIsNone(self.db.get((self.cf_a, b"a")))
+
+    def test_write_batch(self):
+        cfa = self.db.get_column_family(b"A")
+        batch = rocksdb.WriteBatch()
+        batch.put((cfa, b"key"), b"v1")
+        batch.delete((self.cf_a, b"key"))
+        batch.put((cfa, b"key"), b"v2")
+        batch.put((cfa, b"key"), b"v3")
+        batch.put((cfa, b"a"), b"1")
+        batch.put((cfa, b"b"), b"2")
+
+        self.db.write(batch)
+        query = [(cfa, b"key"), (cfa, b"a"), (cfa, b"b")]
+        ret = self.db.multi_get(query)
+
+        self.assertEqual(b"v3", ret[query[0]])
+        self.assertEqual(b"1", ret[query[1]])
+        self.assertEqual(b"2", ret[query[2]])
+
+    def test_key_may_exists(self):
+        self.db.put((self.cf_a, b"a"), b'1')
+
+        self.assertEqual(
+            (False, None),
+            self.db.key_may_exist((self.cf_a, b"x"))
+        )
+        self.assertEqual(
+            (False, None),
+            self.db.key_may_exist((self.cf_a, b'x'), fetch=True)
+        )
+        self.assertEqual(
+            (True, None),
+            self.db.key_may_exist((self.cf_a, b'a'))
+        )
+        self.assertEqual(
+            (True, b'1'),
+            self.db.key_may_exist((self.cf_a, b'a'), fetch=True)
+        )
+
+    def test_iter_keys(self):
+        for x in range(300):
+            self.db.put((self.cf_a, int_to_bytes(x)), int_to_bytes(x))
+
+        it = self.db.iterkeys(self.cf_a)
+        self.assertEqual([], list(it))
+
+        it.seek_to_last()
+        self.assertEqual([(self.cf_a, b'99')], list(it))
+
+        ref = sorted([(self.cf_a, int_to_bytes(x)) for x in range(300)])
+        it.seek_to_first()
+        self.assertEqual(ref, list(it))
+
+        it.seek(b'90')
+        ref = sorted([(self.cf_a, int_to_bytes(x)) for x in range(90, 100)])
+        self.assertEqual(ref, list(it))
+
+    def test_iter_values(self):
+        for x in range(300):
+            self.db.put((self.cf_b, int_to_bytes(x)), int_to_bytes(x * 1000))
+
+        it = self.db.itervalues(self.cf_b)
+        self.assertEqual([], list(it))
+
+        it.seek_to_last()
+        self.assertEqual([b'99000'], list(it))
+
+        ref = sorted([int_to_bytes(x) for x in range(300)])
+        ref = [int_to_bytes(int(x) * 1000) for x in ref]
+        it.seek_to_first()
+        self.assertEqual(ref, list(it))
+
+        it.seek(b'90')
+        ref = [int_to_bytes(x * 1000) for x in range(90, 100)]
+        self.assertEqual(ref, list(it))
+
+    def test_iter_items(self):
+        for x in range(300):
+            self.db.put((self.cf_b, int_to_bytes(x)), int_to_bytes(x * 1000))
+
+        it = self.db.iteritems(self.cf_b)
+        self.assertEqual([], list(it))
+
+        it.seek_to_last()
+        self.assertEqual([((self.cf_b, b'99'), b'99000')], list(it))
+
+        ref = sorted([int_to_bytes(x) for x in range(300)])
+        ref = [((self.cf_b, x), int_to_bytes(int(x) * 1000)) for x in ref]
+        it.seek_to_first()
+        self.assertEqual(ref, list(it))
+
+        it.seek(b'90')
+        ref = [((self.cf_b, int_to_bytes(x)), int_to_bytes(x * 1000)) for x in range(90, 100)]
+        self.assertEqual(ref, list(it))
+
+    def test_reverse_iter(self):
+        for x in range(100):
+            self.db.put((self.cf_a, int_to_bytes(x)), int_to_bytes(x * 1000))
+
+        it = self.db.iteritems(self.cf_a)
+        it.seek_to_last()
+
+        ref = reversed(sorted([(self.cf_a, int_to_bytes(x)) for x in range(100)]))
+        ref = [(x, int_to_bytes(int(x[1]) * 1000)) for x in ref]
+
+        self.assertEqual(ref, list(reversed(it)))
+
+    def test_snapshot(self):
+        cfa = self.db.get_column_family(b'A')
+        self.db.put((cfa, b"a"), b"1")
+        self.db.put((cfa, b"b"), b"2")
+
+        snapshot = self.db.snapshot()
+        self.db.put((cfa, b"a"), b"2")
+        self.db.delete((cfa, b"b"))
+
+        it = self.db.iteritems(cfa)
+        it.seek_to_first()
+        self.assertEqual({(cfa, b'a'): b'2'}, dict(it))
+
+        it = self.db.iteritems(cfa, snapshot=snapshot)
+        it.seek_to_first()
+        self.assertEqual({(cfa, b'a'): b'1', (cfa, b'b'): b'2'}, dict(it))
+
+    def test_get_property(self):
+        for x in range(300):
+            x = int_to_bytes(x)
+            self.db.put((self.cf_a, x), x)
+
+        self.assertEqual(b"300",
+                         self.db.get_property(b'rocksdb.estimate-num-keys',
+                                              self.cf_a))
+        self.assertIsNone(self.db.get_property(b'does not exsits',
+                                               self.cf_a))
+
+    def test_compact_range(self):
+        for x in range(10000):
+            x = int_to_bytes(x)
+            self.db.put((self.cf_b, x), x)
+
+        self.db.compact_range(column_family=self.cf_b)
+

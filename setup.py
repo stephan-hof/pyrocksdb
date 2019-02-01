@@ -42,5 +42,6 @@ setup(
         "doc": ['sphinx_rtd_theme', 'sphinx'],
         "test": ['pytest'],
     },
-    include_package_data=True
+    include_package_data=True,
+    zip_safe=False,
 )

@@ -1,5 +1,5 @@
 cimport options
-from libc.stdint cimport uint64_t
+from libc.stdint cimport uint64_t, uint32_t
 from status cimport Status
 from libcpp cimport bool as cpp_bool
 from libcpp.string cimport string
@@ -13,8 +13,11 @@ cdef extern from "rocksdb/write_batch.h" namespace "rocksdb":
         WriteBatch() nogil except+
         WriteBatch(string) nogil except+
         void Put(const Slice&, const Slice&) nogil except+
+        void Put(ColumnFamilyHandle*, const Slice&, const Slice&) nogil except+
         void Merge(const Slice&, const Slice&) nogil except+
+        void Merge(ColumnFamilyHandle*, const Slice&, const Slice&) nogil except+
         void Delete(const Slice&) nogil except+
+        void Delete(ColumnFamilyHandle*, const Slice&) nogil except+
         void PutLogData(const Slice&) nogil except+
         void Clear() nogil except+
         const string& Data() nogil except+
@@ -28,6 +31,7 @@ cdef extern from "cpp/write_batch_iter_helper.hpp" namespace "py_rocks":
 
     cdef cppclass BatchItem "py_rocks::RecordItemsHandler::BatchItem":
         BatchItemOp op
+        uint32_t column_family_id
         Slice key
         Slice value
 
@@ -36,6 +40,7 @@ cdef extern from "cpp/write_batch_iter_helper.hpp" namespace "py_rocks":
 
 cdef extern from "rocksdb/db.h" namespace "rocksdb":
     ctypedef uint64_t SequenceNumber
+    string kDefaultColumnFamilyName
 
     cdef struct LiveFileMetaData:
         string name
@@ -52,15 +57,18 @@ cdef extern from "rocksdb/db.h" namespace "rocksdb":
     cdef cppclass DB:
         Status Put(
             const options.WriteOptions&,
+            ColumnFamilyHandle*,
             const Slice&,
             const Slice&) nogil except+
 
         Status Delete(
             const options.WriteOptions&,
+            ColumnFamilyHandle*,
             const Slice&) nogil except+
 
         Status Merge(
             const options.WriteOptions&,
+            ColumnFamilyHandle*,
             const Slice&,
             const Slice&) nogil except+
 
@@ -70,52 +78,73 @@ cdef extern from "rocksdb/db.h" namespace "rocksdb":
 
         Status Get(
             const options.ReadOptions&,
+            ColumnFamilyHandle*,
             const Slice&,
             string*) nogil except+
 
         vector[Status] MultiGet(
             const options.ReadOptions&,
+            const vector[ColumnFamilyHandle*]&,
             const vector[Slice]&,
             vector[string]*) nogil except+
 
         cpp_bool KeyMayExist(
             const options.ReadOptions&,
+            ColumnFamilyHandle*,
             Slice&,
             string*,
             cpp_bool*) nogil except+
 
         cpp_bool KeyMayExist(
             const options.ReadOptions&,
+            ColumnFamilyHandle*,
             Slice&,
             string*) nogil except+
 
         Iterator* NewIterator(
-            const options.ReadOptions&) nogil except+
+            const options.ReadOptions&,
+            ColumnFamilyHandle*) nogil except+
+
+        void NewIterators(
+            const options.ReadOptions&,
+            vector[ColumnFamilyHandle*]&,
+            vector[Iterator*]*) nogil except+
 
         const Snapshot* GetSnapshot() nogil except+
 
         void ReleaseSnapshot(const Snapshot*) nogil except+
 
         cpp_bool GetProperty(
+            ColumnFamilyHandle*,
             const Slice&,
             string*) nogil except+
 
         void GetApproximateSizes(
+            ColumnFamilyHandle*,
             const Range*
             int,
             uint64_t*) nogil except+
 
         Status CompactRange(
             const options.CompactRangeOptions&,
+            ColumnFamilyHandle*,
             const Slice*,
             const Slice*) nogil except+
 
-        int NumberLevels() nogil except+
-        int MaxMemCompactionLevel() nogil except+
-        int Level0StopWriteTrigger() nogil except+
+        Status CreateColumnFamily(
+            const options.ColumnFamilyOptions&,
+            const string&,
+            ColumnFamilyHandle**) nogil except+
+
+        Status DropColumnFamily(
+            ColumnFamilyHandle*) nogil except+
+
+        int NumberLevels(ColumnFamilyHandle*) nogil except+
+        int MaxMemCompactionLevel(ColumnFamilyHandle*) nogil except+
+        int Level0StopWriteTrigger(ColumnFamilyHandle*) nogil except+
         const string& GetName() nogil except+
-        const options.Options& GetOptions() nogil except+
-        Status Flush(const options.FlushOptions&) nogil except+
+        const options.Options& GetOptions(ColumnFamilyHandle*) nogil except+
+        Status Flush(const options.FlushOptions&, ColumnFamilyHandle*) nogil except+
         Status DisableFileDeletions() nogil except+
         Status EnableFileDeletions() nogil except+
 
@@ -127,11 +156,19 @@ cdef extern from "rocksdb/db.h" namespace "rocksdb":
 
         Status DeleteFile(string) nogil except+
         void GetLiveFilesMetaData(vector[LiveFileMetaData]*) nogil except+
+        ColumnFamilyHandle* DefaultColumnFamily()
 
 
     cdef Status DB_Open "rocksdb::DB::Open"(
         const options.Options&,
         const string&,
+        DB**) nogil except+
+
+    cdef Status DB_Open_ColumnFamilies "rocksdb::DB::Open"(
+        const options.Options&,
+        const string&,
+        const vector[ColumnFamilyDescriptor]&,
+        vector[ColumnFamilyHandle*]*,
         DB**) nogil except+
 
     cdef Status DB_OpenForReadOnly "rocksdb::DB::OpenForReadOnly"(
@@ -140,4 +177,29 @@ cdef extern from "rocksdb/db.h" namespace "rocksdb":
         DB**,
         cpp_bool) nogil except+
 
+    cdef Status DB_OpenForReadOnly_ColumnFamilies "rocksdb::DB::OpenForReadOnly"(
+        const options.Options&,
+        const string&,
+        const vector[ColumnFamilyDescriptor]&,
+        vector[ColumnFamilyHandle*]*,
+        DB**,
+        cpp_bool) nogil except+
+
     cdef Status RepairDB(const string& dbname, const options.Options&)
+
+    cdef Status ListColumnFamilies "rocksdb::DB::ListColumnFamilies" (
+        const options.Options&,
+        const string&,
+        vector[string]*) nogil except+
+
+    cdef cppclass ColumnFamilyHandle:
+        const string& GetName() nogil except+
+        int GetID() nogil except+
+
+    cdef cppclass ColumnFamilyDescriptor:
+        ColumnFamilyDescriptor() nogil except+
+        ColumnFamilyDescriptor(
+	    const string&,
+            const options.ColumnFamilyOptions&) nogil except+
+        string name
+        options.ColumnFamilyOptions options
