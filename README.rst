@@ -2,6 +2,9 @@ Note
 =========
 The original pyrocksdb (https://pypi.python.org/pypi/pyrocksdb/0.4) has not been updated for long time. I update pyrocksdb to support the latest rocksdb. Please open issues in github if you have any problem.
 
+News
+=========
+Currently I am refactoring the code, and more features like TTL are coming soon. And the installation will be much more easily.
 
 pyrocksdb
 =========
