@@ -6,6 +6,11 @@ News (2019/04/18)
 =========
 Currently I am refactoring the code, and more features like TTL are coming soon. And the installation with cmake will be much more easily. 
 
+News (2019/04/19)
+I have created a branch named `pybind11` which provides the basic functions (`put`, `get` and `delete`) now. And the installtion is much more easily!  you can try it if you encounter any installtion issues in the current version of `python-rocksdb`.
+
+The branch is under development and will be released to PypI after I migrate most of the existing features. 
+
 pyrocksdb
 =========
 
