@@ -1,7 +1,7 @@
 |conda-badge|
 
 .. |conda-badge| image:: https://anaconda.org/conda-forge/python-rocksdb/badges/installer/conda.svg
-   :target: https://conda.anaconda.org/conda-forge
+   :target: https://anaconda.org/conda-forge/python-rocksdb
 
 Note
 =========
