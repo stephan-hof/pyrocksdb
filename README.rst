@@ -1,3 +1,8 @@
+|conda-badge|
+
+.. |conda-badge| image:: https://anaconda.org/conda-forge/python-rocksdb/badges/installer/conda.svg
+   :target: https://conda.anaconda.org/conda-forge
+
 Note
 =========
 The original pyrocksdb (https://pypi.python.org/pypi/pyrocksdb/0.4) has not been updated for long time. I update pyrocksdb to support the latest rocksdb. Please open issues in github if you have any problem.
