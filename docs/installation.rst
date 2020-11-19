@@ -12,7 +12,7 @@ For more details consider https://github.com/facebook/rocksdb/blob/master/INSTAL
 .. code-block:: bash
 
     apt-get install build-essential
-    apt-get install libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev
+    apt-get install libgflags-dev libsnappy-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev
     git clone https://github.com/facebook/rocksdb.git
     cd rocksdb
     make shared_lib
