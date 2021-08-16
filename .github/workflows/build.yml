@@ -1,0 +1,95 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: publish
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  wheel:
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        include:
+          # MacOS
+          - python: '3.6'
+            os: macos-latest
+          - python: '3.7'
+            os: macos-latest
+          - python: '3.8'
+            os: macos-latest
+          - python: '3.9'
+            os: macos-latest
+          # Windows
+          # - python: '3.6'
+          #  os: windows-latest
+          #- python: '3.7'
+          #  os: windows-latest
+          #- python: '3.8'
+          #  os: windows-latest
+          #- python: '3.9'
+          #  os: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Setup python${{ matrix.python }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: "${{ matrix.python }}"
+
+      - name: Make static library files
+        run: make
+
+      - name: Install requires
+        run: python -m pip install cython twine wheel
+
+      - name: Install requires
+        run: python -m pip install cython twine wheel
+
+      - name: Build wheel for python "${{ matrix.python }}"
+        run: python setup.py bdist_wheel
+
+      - name: Publishing to pypi
+        run: twine upload --skip-existing --disable-progress-bar dist/*.whl
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+
+  linux-wheels:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Building manylinux2010 wheels
+        uses: docker://quay.io/pypa/manylinux2010_x86_64
+        with:
+          args: /bin/bash scripts/make-wheels.sh
+
+      - name: Setup python${{ matrix.python }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+
+      - name: Install requires
+        run: python -m pip install twine
+
+      - name: Publishing to pypi
+        run: twine upload --skip-existing --disable-progress-bar dist/*.whl
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
