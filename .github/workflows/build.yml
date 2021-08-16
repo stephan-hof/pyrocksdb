@@ -53,9 +53,6 @@ jobs:
       - name: Install requires
         run: python -m pip install cython twine wheel
 
-      - name: Install requires
-        run: python -m pip install cython twine wheel
-
       - name: Build wheel for python "${{ matrix.python }}"
         run: python setup.py bdist_wheel
 
@@ -74,6 +71,12 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
+
+      - name: Make static library files
+        run: make
+
+      - name: Install requires
+        run: python -m pip install cython twine wheel
 
       - name: Building manylinux2010 wheels
         uses: docker://quay.io/pypa/manylinux2010_x86_64

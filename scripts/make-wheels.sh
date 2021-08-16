@@ -1,8 +1,10 @@
 set -ex
 
 mkdir -p dist
+make -j4
 
 function build_wheel() {
+  /opt/python/$1/bin/pip install cython
 	/opt/python/$1/bin/pip wheel . -f . -w dist
 }
 
