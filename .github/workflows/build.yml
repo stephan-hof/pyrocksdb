@@ -4,6 +4,9 @@
 name: publish
 
 on:
+  push:
+    branches:
+      - 'release/**'
   release:
     types:
       - created
